@@ -14,9 +14,9 @@
  *
  * Usage:
  * $ # for 4.5/4.6/C based 4.7
- * $ gcc -I`gcc -print-file-name=plugin`/include -I`gcc -print-file-name=plugin`/include/c-family -fPIC -shared -O2 -o size_overflow_plugin.so size_overflow_plugin.c
+ * $ gcc -I`gcc -print-file-name=plugin`/include -I`gcc -print-file-name=plugin`/include/c-family -fPIC -shared -O2 -std=gnu99 -ggdb -o size_overflow_plugin.so size_overflow_plugin.c
  * $ # for C++ based 4.7/4.8+
- * $ g++ -I`g++ -print-file-name=plugin`/include -I`g++ -print-file-name=plugin`/include/c-family -fPIC -shared -O2 -o size_overflow_plugin.so size_overflow_plugin.c
+ * $ g++ -I`g++ -print-file-name=plugin`/include -I`g++ -print-file-name=plugin`/include/c-family -fPIC -shared -O2 -std=gnu++98 -fno-rtti -ggdb -o size_overflow_plugin.so size_overflow_plugin.c
  *
  * $ gcc -fplugin=./size_overflow_plugin.so test.c -O2
  */
