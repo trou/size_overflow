@@ -148,6 +148,29 @@ static void size_overflow_start_unit(void __unused *gcc_data, void __unused *use
 	TREE_THIS_VOLATILE(report_size_overflow_decl) = 1;
 }
 
+
+extern struct gimple_opt_pass pass_dce;
+
+#if BUILDING_GCC_VERSION >= 4009
+namespace {
+class pass_dce : public gimple_opt_pass {
+public:
+	pass_dce() : gimple_opt_pass(pass_dce_data, g) {}
+	unsigned int execute() { return tree_ssa_dce(); }
+};
+}
+#endif
+
+static struct opt_pass *make_dce_pass(void)
+{
+#if BUILDING_GCC_VERSION >= 4009
+	return new pass_dce();
+#else
+	return &pass_dce.pass;
+#endif
+}
+
+
 int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gcc_version *version)
 {
 	int i;
@@ -159,6 +182,7 @@ int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gcc_version 
 	struct register_pass_info __unused dump_before_pass_info;
 	struct register_pass_info __unused dump_after_pass_info;
 	struct register_pass_info insert_size_overflow_check_info;
+	struct register_pass_info dce_pass_info;
 	static const struct ggc_root_tab gt_ggc_r_gt_size_overflow[] = {
 		{
 			.base = &report_size_overflow_decl,
@@ -190,6 +214,12 @@ int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gcc_version 
 	dump_after_pass_info.ref_pass_instance_number	= 1;
 	dump_after_pass_info.pos_op			= PASS_POS_INSERT_BEFORE;
 
+	dce_pass_info.pass				= make_dce_pass();
+	dce_pass_info.reference_pass_name		= "slsr";
+	dce_pass_info.ref_pass_instance_number	= 1;
+	dce_pass_info.pos_op			= PASS_POS_INSERT_BEFORE;
+
+
 	if (!plugin_default_version_check(version, &gcc_version)) {
 		error(G_("incompatible gcc/plugin versions"));
 		return 1;
@@ -211,6 +241,8 @@ int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gcc_version 
 //		register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &dump_before_pass_info);
 		register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &insert_size_overflow_check_info);
 //		register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &dump_after_pass_info);
+
+		register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &dce_pass_info);
 	}
 	register_callback(plugin_name, PLUGIN_ATTRIBUTES, register_attributes, NULL);
 
