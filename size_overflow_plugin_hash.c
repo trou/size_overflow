@@ -20,6 +20,9 @@
 #include "gcc-common.h"
 #include "size_overflow.h"
 
+#include "size_overflow_hash.h"
+#include "size_overflow_hash_aux.h"
+
 #define CODES_LIMIT 32
 
 enum stmt_flags get_stmt_flag(gimple stmt)

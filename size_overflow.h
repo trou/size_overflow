@@ -27,6 +27,40 @@ extern tree size_overflow_type_DI;
 extern tree size_overflow_type_TI;
 
 
+// size_overflow_plugin_hash.c
+struct size_overflow_hash {
+	const struct size_overflow_hash * const next;
+	const char * const name;
+	const unsigned int param;
+};
+
+struct interesting_node {
+	struct interesting_node *next;
+	gimple first_stmt;
+	const_tree fndecl;
+	tree node;
+#if BUILDING_GCC_VERSION <= 4007
+	VEC(tree, gc) *last_nodes;
+#else
+	vec<tree, va_gc> *last_nodes;
+#endif
+	unsigned int num;
+	enum mark intentional_attr_decl;
+	enum mark intentional_attr_cur_fndecl;
+	gimple intentional_mark_from_gimple;
+};
+
+extern bool is_size_overflow_asm(const_gimple stmt);
+extern unsigned int get_function_num(const_tree node, const_tree orig_fndecl);
+extern unsigned int get_correct_arg_count(unsigned int argnum, const_tree fndecl);
+extern bool is_missing_function(const_tree orig_fndecl, unsigned int num);
+extern bool is_a_return_check(const_tree node);
+extern const struct size_overflow_hash *get_function_hash(const_tree fndecl);
+extern void set_stmt_flag(gimple stmt, enum stmt_flags new_flag);
+extern enum stmt_flags get_stmt_flag(gimple stmt);
+extern unsigned int find_arg_number_tree(const_tree arg, const_tree func);
+
+
 // size_overflow_debug.c
 extern struct opt_pass *make_dump_pass(void);
 
@@ -67,43 +101,6 @@ extern tree create_new_var(tree type);
 extern gimple build_cast_stmt(tree dst_type, tree rhs, tree lhs, gimple_stmt_iterator *gsi, bool before, bool force);
 extern bool skip_types(const_tree var);
 extern tree cast_a_tree(tree type, tree var);
-
-
-// size_overflow_plugin_hash.c
-struct size_overflow_hash {
-	const struct size_overflow_hash * const next;
-	const char * const name;
-	const unsigned int param;
-};
-
-#include "size_overflow_hash.h"
-#include "size_overflow_hash_aux.h"
-
-struct interesting_node {
-	struct interesting_node *next;
-	gimple first_stmt;
-	const_tree fndecl;
-	tree node;
-#if BUILDING_GCC_VERSION <= 4007
-	VEC(tree, gc) *last_nodes;
-#else
-	vec<tree, va_gc> *last_nodes;
-#endif
-	unsigned int num;
-	enum mark intentional_attr_decl;
-	enum mark intentional_attr_cur_fndecl;
-	gimple intentional_mark_from_gimple;
-};
-
-extern bool is_size_overflow_asm(const_gimple stmt);
-extern unsigned int get_function_num(const_tree node, const_tree orig_fndecl);
-extern unsigned int get_correct_arg_count(unsigned int argnum, const_tree fndecl);
-extern bool is_missing_function(const_tree orig_fndecl, unsigned int num);
-extern bool is_a_return_check(const_tree node);
-extern const struct size_overflow_hash *get_function_hash(const_tree fndecl);
-extern void set_stmt_flag(gimple stmt, enum stmt_flags new_flag);
-extern enum stmt_flags get_stmt_flag(gimple stmt);
-extern unsigned int find_arg_number_tree(const_tree arg, const_tree func);
 
 
 // insert_size_overflow_check_core.c

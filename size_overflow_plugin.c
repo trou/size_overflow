@@ -172,20 +172,10 @@ static void size_overflow_start_unit(void __unused *gcc_data, void __unused *use
 
 extern struct gimple_opt_pass pass_dce;
 
-#if BUILDING_GCC_VERSION >= 4009
-namespace {
-class pass_dce : public gimple_opt_pass {
-public:
-	pass_dce() : gimple_opt_pass(pass_dce_data, g) {}
-	unsigned int execute() { return tree_ssa_dce(); }
-};
-}
-#endif
-
 static struct opt_pass *make_dce_pass(void)
 {
 #if BUILDING_GCC_VERSION >= 4009
-	return new pass_dce();
+	return make_pass_dce(g);
 #else
 	return &pass_dce.pass;
 #endif
@@ -237,9 +227,9 @@ int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gcc_version 
 	dump_after_pass_info.pos_op			= PASS_POS_INSERT_BEFORE;
 
 	dce_pass_info.pass				= make_dce_pass();
-	dce_pass_info.reference_pass_name		= "slsr";
+	dce_pass_info.reference_pass_name		= "remove_unnecessary_dup";
 	dce_pass_info.ref_pass_instance_number	= 1;
-	dce_pass_info.pos_op			= PASS_POS_INSERT_BEFORE;
+	dce_pass_info.pos_op			= PASS_POS_INSERT_AFTER;
 
 	remove_unnecessary_dup_pass_info.pass				= make_remove_unnecessary_dup_pass();
 	remove_unnecessary_dup_pass_info.reference_pass_name		= "vrp";
