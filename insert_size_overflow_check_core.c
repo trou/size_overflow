@@ -637,6 +637,7 @@ static tree create_cast_overflow_check(struct pointer_set_t *visited, struct cgr
 
 static tree handle_unary_rhs(struct pointer_set_t *visited, struct cgraph_node *caller_node, gimple stmt)
 {
+	enum tree_code rhs_code;
 	tree rhs1, new_rhs1, lhs = gimple_assign_lhs(stmt);
 
 	if (get_stmt_flag(stmt) == MY_STMT)
@@ -654,7 +655,8 @@ static tree handle_unary_rhs(struct pointer_set_t *visited, struct cgraph_node *
 	if (get_stmt_flag(stmt) == NO_CAST_CHECK)
 		return dup_assign(visited, stmt, lhs, new_rhs1, NULL_TREE, NULL_TREE);
 
-	if (gimple_assign_rhs_code(stmt) == BIT_NOT_EXPR) {
+	rhs_code = gimple_assign_rhs_code(stmt);
+	if (rhs_code == BIT_NOT_EXPR || rhs_code == NEGATE_EXPR) {
 		tree size_overflow_type = get_size_overflow_type(stmt, rhs1);
 
 		new_rhs1 = cast_to_new_size_overflow_type(stmt, new_rhs1, size_overflow_type, BEFORE_STMT);
