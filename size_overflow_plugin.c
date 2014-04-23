@@ -24,6 +24,11 @@ int plugin_is_GPL_compatible;
 
 tree report_size_overflow_decl;
 
+tree size_overflow_type_HI;
+tree size_overflow_type_SI;
+tree size_overflow_type_DI;
+tree size_overflow_type_TI;
+
 static struct plugin_info size_overflow_plugin_info = {
 	.version	= "20140407",
 	.help		= "no-size-overflow\tturn off size overflow checking\n",
@@ -124,6 +129,17 @@ static void register_attributes(void __unused *event_data, void __unused *data)
 	register_attribute(&intentional_overflow_attr);
 }
 
+static tree create_typedef(tree type, const char* ident)
+{
+	tree new_type, decl;
+
+	new_type = build_variant_type_copy(type);
+	decl = build_decl(BUILTINS_LOCATION, TYPE_DECL, get_identifier(ident), new_type);
+	DECL_ORIGINAL_TYPE(decl) = type;
+	TYPE_NAME(new_type) = decl;
+	return new_type;
+}
+
 // Create the noreturn report_size_overflow() function decl.
 static void size_overflow_start_unit(void __unused *gcc_data, void __unused *user_data)
 {
@@ -131,6 +147,11 @@ static void size_overflow_start_unit(void __unused *gcc_data, void __unused *use
 	tree fntype;
 
 	const_char_ptr_type_node = build_pointer_type(build_type_variant(char_type_node, 1, 0));
+
+	size_overflow_type_HI = create_typedef(intHI_type_node, "size_overflow_type_HI");
+	size_overflow_type_SI = create_typedef(intSI_type_node, "size_overflow_type_SI");
+	size_overflow_type_DI = create_typedef(intDI_type_node, "size_overflow_type_DI");
+	size_overflow_type_TI = create_typedef(intTI_type_node, "size_overflow_type_TI");
 
 	// void report_size_overflow(const char *loc_file, unsigned int loc_line, const char *current_func, const char *ssa_var)
 	fntype = build_function_type_list(void_type_node,

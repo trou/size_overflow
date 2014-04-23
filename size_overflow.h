@@ -21,6 +21,10 @@ enum stmt_flags {
 
 // size_overflow_plugin.c
 extern tree report_size_overflow_decl;
+extern tree size_overflow_type_HI;
+extern tree size_overflow_type_SI;
+extern tree size_overflow_type_DI;
+extern tree size_overflow_type_TI;
 
 
 // size_overflow_debug.c

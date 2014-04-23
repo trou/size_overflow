@@ -37,23 +37,23 @@ static tree get_size_overflow_type(gimple stmt, const_tree node)
 
 	switch (TYPE_MODE(type)) {
 	case QImode:
-		new_type = intHI_type_node;
+		new_type = size_overflow_type_HI;
 		break;
 	case HImode:
-		new_type = intSI_type_node;
+		new_type = size_overflow_type_SI;
 		break;
 	case SImode:
-		new_type = intDI_type_node;
+		new_type = size_overflow_type_DI;
 		break;
 	case DImode:
 		if (LONG_TYPE_SIZE == GET_MODE_BITSIZE(SImode))
-			new_type = TYPE_UNSIGNED(type) ? unsigned_intDI_type_node : intDI_type_node;
+			new_type = TYPE_UNSIGNED(type) ? unsigned_intDI_type_node : size_overflow_type_DI;
 		else
-			new_type = intTI_type_node;
+			new_type = size_overflow_type_TI;
 		break;
 	case TImode:
 		gcc_assert(!TYPE_UNSIGNED(type));
-		new_type = intTI_type_node;
+		new_type = size_overflow_type_TI;
 		break;
 	default:
 		debug_tree((tree)node);
