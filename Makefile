@@ -23,7 +23,7 @@ PLUGIN_FLAGS += -fPIC -shared -O2 -ggdb -Wall -W
 
 all: $(PROG)
 
-$(PROG): size_overflow_plugin.c size_overflow_debug.c insert_size_overflow_asm.c insert_size_overflow_check_core.c insert_size_overflow_check_ipa.c size_overflow_plugin_hash.c intentional_overflow.c misc.c
+$(PROG): size_overflow_plugin.c size_overflow_debug.c insert_size_overflow_asm.c insert_size_overflow_check_core.c insert_size_overflow_check_ipa.c size_overflow_plugin_hash.c intentional_overflow.c misc.c remove_unnecessary_dup.c
 	$(PLUGINCC) $(PLUGIN_FLAGS) -o $@ $^
 
 run: $(PROG)

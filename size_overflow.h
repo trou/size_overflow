@@ -109,4 +109,8 @@ extern tree dup_assign(struct pointer_set_t *visited, gimple oldstmt, const_tree
 extern tree create_assign(struct pointer_set_t *visited, gimple oldstmt, tree rhs1, bool before);
 
 
+// remove_unnecessary_dup.c
+extern struct opt_pass *make_remove_unnecessary_dup_pass(void);
+
+
 #endif
