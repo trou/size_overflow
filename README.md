@@ -17,20 +17,14 @@ http://forums.grsecurity.net/viewtopic.php?f=7&t=3043
 Compiling & Usage
 -----------------
 
-##### gcc 4.5 - 4.7 (C):
+##### gcc 4.5 - 4.9:
 
 ```shell
-$ gcc -I`gcc -print-file-name=plugin`/include -I`gcc -print-file-name=plugin`/include/c-family -fPIC -shared -O2 -std=gnu99 -ggdb -o size_overflow_plugin.so size_overflow_plugin.c
-```
-
-##### gcc 4.7 (C++) - 4.8+
-
-```shell
-$ g++ -I`g++ -print-file-name=plugin`/include -I`g++ -print-file-name=plugin`/include/c-family -fPIC -shared -O2 -std=gnu++98 -fno-rtti -ggdb -o size_overflow_plugin.so size_overflow_plugin.c
+$ make clean; make
 ```
 
 ##### Usage
 
 ```shell
-$ gcc -fplugin=./size_overflow_plugin.so test.c -O2
+$ make run
 ```
