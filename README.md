@@ -8,6 +8,9 @@ Homepage
 
 http://www.grsecurity.net/~ephox/overflow_plugin/
 
+
+The kernel patches required by the plugin are maintained in PaX (http://www.grsecurity.net/~paxguy1/) and grsecurity (http://grsecurity.net/).
+
 Documentation
 -------------
 
