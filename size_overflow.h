@@ -15,8 +15,11 @@ enum mark {
 	MARK_NO, MARK_YES, MARK_NOT_INTENTIONAL, MARK_TURN_OFF
 };
 
-enum stmt_flags {
-	MY_STMT, NO_CAST_CHECK, VISITED_STMT, NO_FLAGS
+struct visited {
+	struct pointer_set_t *stmts;
+	struct pointer_set_t *my_stmts;
+	struct pointer_set_t *skip_expr_casts;
+	struct pointer_set_t *no_cast_check;
 };
 
 // size_overflow_plugin.c
@@ -56,8 +59,6 @@ extern unsigned int get_correct_arg_count(unsigned int argnum, const_tree fndecl
 extern bool is_missing_function(const_tree orig_fndecl, unsigned int num);
 extern bool is_a_return_check(const_tree node);
 extern const struct size_overflow_hash *get_function_hash(const_tree fndecl);
-extern void set_stmt_flag(gimple stmt, enum stmt_flags new_flag);
-extern enum stmt_flags get_stmt_flag(gimple stmt);
 extern unsigned int find_arg_number_tree(const_tree arg, const_tree func);
 
 
@@ -77,8 +78,8 @@ extern void check_intentional_attribute_ipa(struct interesting_node *cur_node);
 extern bool is_a_cast_and_const_overflow(const_tree no_const_rhs);
 extern bool is_const_plus_unsigned_signed_truncation(const_tree lhs);
 extern bool is_a_constant_overflow(const_gimple stmt, const_tree rhs);
-extern tree handle_intentional_overflow(struct pointer_set_t *visited, struct cgraph_node *caller_node, bool check_overflow, gimple stmt, tree change_rhs, tree new_rhs2);
-extern tree handle_integer_truncation(struct pointer_set_t *visited, struct cgraph_node *caller_node, const_tree lhs);
+extern tree handle_intentional_overflow(struct visited *visited, struct cgraph_node *caller_node, bool check_overflow, gimple stmt, tree change_rhs, tree new_rhs2);
+extern tree handle_integer_truncation(struct visited *visited, struct cgraph_node *caller_node, const_tree lhs);
 extern bool is_a_neg_overflow(const_gimple stmt, const_tree rhs);
 
 
@@ -98,21 +99,21 @@ extern void set_current_function_decl(tree fndecl);
 extern void unset_current_function_decl(void);
 extern gimple get_def_stmt(const_tree node);
 extern tree create_new_var(tree type);
-extern gimple build_cast_stmt(tree dst_type, tree rhs, tree lhs, gimple_stmt_iterator *gsi, bool before, bool force);
+extern gimple build_cast_stmt(struct visited *visited, tree dst_type, tree rhs, tree lhs, gimple_stmt_iterator *gsi, bool before, bool force);
 extern bool skip_types(const_tree var);
 extern tree cast_a_tree(tree type, tree var);
 
 
 // insert_size_overflow_check_core.c
-extern tree expand(struct pointer_set_t *visited, struct cgraph_node *caller_node, tree lhs);
+extern tree expand(struct visited *visited, struct cgraph_node *caller_node, tree lhs);
 extern void check_size_overflow(struct cgraph_node *caller_node, gimple stmt, tree size_overflow_type, tree cast_rhs, tree rhs, bool before);
-extern tree dup_assign(struct pointer_set_t *visited, gimple oldstmt, const_tree node, tree rhs1, tree rhs2, tree __unused rhs3);
-extern tree create_assign(struct pointer_set_t *visited, gimple oldstmt, tree rhs1, bool before);
+extern tree dup_assign(struct visited *visited, gimple oldstmt, const_tree node, tree rhs1, tree rhs2, tree __unused rhs3);
+extern tree create_assign(struct visited *visited, gimple oldstmt, tree rhs1, bool before);
 
 
 // remove_unnecessary_dup.c
 extern struct opt_pass *make_remove_unnecessary_dup_pass(void);
-extern void insert_cast_expr(struct pointer_set_t *visited, gimple stmt);
+extern void insert_cast_expr(struct visited *visited, gimple stmt);
 extern bool skip_expr_on_double_type(const_gimple stmt);
 
 #endif

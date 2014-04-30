@@ -145,7 +145,7 @@ tree cast_a_tree(tree type, tree var)
 	return fold_convert(type, var);
 }
 
-gimple build_cast_stmt(tree dst_type, tree rhs, tree lhs, gimple_stmt_iterator *gsi, bool before, bool force)
+gimple build_cast_stmt(struct visited *visited, tree dst_type, tree rhs, tree lhs, gimple_stmt_iterator *gsi, bool before, bool force)
 {
 	gimple assign, def_stmt;
 
@@ -155,7 +155,7 @@ gimple build_cast_stmt(tree dst_type, tree rhs, tree lhs, gimple_stmt_iterator *
 		gcc_unreachable();
 
 	def_stmt = get_def_stmt(rhs);
-	if (def_stmt && gimple_code(def_stmt) != GIMPLE_NOP && skip_cast(dst_type, rhs, force) && get_stmt_flag(def_stmt) == MY_STMT)
+	if (def_stmt && gimple_code(def_stmt) != GIMPLE_NOP && skip_cast(dst_type, rhs, force) && pointer_set_contains(visited->my_stmts, def_stmt))
 		return def_stmt;
 
 	if (lhs == CREATE_NEW_VAR)

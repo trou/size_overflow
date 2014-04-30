@@ -25,49 +25,6 @@
 
 #define CODES_LIMIT 32
 
-enum stmt_flags get_stmt_flag(gimple stmt)
-{
-	bool bit_1, bit_2;
-
-	bit_1 = gimple_plf(stmt, GF_PLF_1);
-	bit_2 = gimple_plf(stmt, GF_PLF_2);
-
-	if (!bit_1 && !bit_2)
-		return NO_FLAGS;
-	if (bit_1 && bit_2)
-		return MY_STMT;
-	if (!bit_1 && bit_2)
-		return VISITED_STMT;
-	return NO_CAST_CHECK;
-}
-
-void set_stmt_flag(gimple stmt, enum stmt_flags new_flag)
-{
-	bool bit_1, bit_2;
-
-	switch (new_flag) {
-	case NO_FLAGS:
-		bit_1 = bit_2 = false;
-		break;
-	case MY_STMT:
-		bit_1 = bit_2 = true;
-		break;
-	case VISITED_STMT:
-		bit_1 = false;
-		bit_2 = true;
-		break;
-	case NO_CAST_CHECK:
-		bit_1 = true;
-		bit_2 = false;
-		break;
-	default:
-		gcc_unreachable();
-	}
-
-	gimple_set_plf(stmt, GF_PLF_1, bit_1);
-	gimple_set_plf(stmt, GF_PLF_2, bit_2);
-}
-
 static unsigned char get_tree_code(const_tree type)
 {
 	switch (TREE_CODE(type)) {

@@ -30,10 +30,11 @@ unsigned int call_count;
 static void set_conditions(struct pointer_set_t *visited, bool *interesting_conditions, const_tree lhs);
 static void walk_use_def(struct pointer_set_t *visited, struct interesting_node *cur_node, tree lhs);
 
-struct visited {
-	struct visited *next;
+struct visited_fns {
+	struct visited_fns *next;
 	const_tree fndecl;
 	unsigned int num;
+	const_gimple first_stmt;
 };
 
 struct next_cgraph_node {
@@ -481,17 +482,17 @@ static enum precond check_preconditions(struct interesting_node *cur_node)
 	return NONE;
 }
 
-static tree cast_to_orig_type(gimple stmt, const_tree orig_node, tree new_node)
+static tree cast_to_orig_type(struct visited *visited, gimple stmt, const_tree orig_node, tree new_node)
 {
 	const_gimple assign;
 	tree orig_type = TREE_TYPE(orig_node);
 	gimple_stmt_iterator gsi = gsi_for_stmt(stmt);
 
-	assign = build_cast_stmt(orig_type, new_node, CREATE_NEW_VAR, &gsi, BEFORE_STMT, false);
+	assign = build_cast_stmt(visited, orig_type, new_node, CREATE_NEW_VAR, &gsi, BEFORE_STMT, false);
 	return gimple_assign_lhs(assign);
 }
 
-static void change_orig_node(struct interesting_node *cur_node, tree new_node)
+static void change_orig_node(struct visited *visited, struct interesting_node *cur_node, tree new_node)
 {
 	void (*set_rhs)(gimple, tree);
 	gimple stmt = cur_node->first_stmt;
@@ -499,10 +500,10 @@ static void change_orig_node(struct interesting_node *cur_node, tree new_node)
 
 	switch (gimple_code(stmt)) {
 	case GIMPLE_RETURN:
-		gimple_return_set_retval(stmt, cast_to_orig_type(stmt, orig_node, new_node));
+		gimple_return_set_retval(stmt, cast_to_orig_type(visited, stmt, orig_node, new_node));
 		break;
 	case GIMPLE_CALL:
-		gimple_call_set_arg(stmt, cur_node->num - 1, cast_to_orig_type(stmt, orig_node, new_node));
+		gimple_call_set_arg(stmt, cur_node->num - 1, cast_to_orig_type(visited, stmt, orig_node, new_node));
 		break;
 	case GIMPLE_ASSIGN:
 		switch (cur_node->num) {
@@ -521,7 +522,7 @@ static void change_orig_node(struct interesting_node *cur_node, tree new_node)
 			gcc_unreachable();
 		}
 
-		set_rhs(stmt, cast_to_orig_type(stmt, orig_node, new_node));
+		set_rhs(stmt, cast_to_orig_type(visited, stmt, orig_node, new_node));
 		break;
 	default:
 		debug_gimple_stmt(stmt);
@@ -531,14 +532,35 @@ static void change_orig_node(struct interesting_node *cur_node, tree new_node)
 	update_stmt(stmt);
 }
 
+static struct visited *create_visited(void)
+{
+	struct visited *new_node;
+
+	new_node = (struct visited *)xmalloc(sizeof(*new_node));
+	new_node->stmts = pointer_set_create();
+	new_node->my_stmts = pointer_set_create();
+	new_node->skip_expr_casts = pointer_set_create();
+	new_node->no_cast_check = pointer_set_create();
+	return new_node;
+}
+
+static void free_visited(struct visited *visited)
+{
+	pointer_set_destroy(visited->stmts);
+	pointer_set_destroy(visited->my_stmts);
+	pointer_set_destroy(visited->skip_expr_casts);
+	pointer_set_destroy(visited->no_cast_check);
+
+	free(visited);
+}
+
 /* This function calls the main recursion function (expand) that duplicates the stmts. Before that it checks the intentional_overflow attribute and asm stmts,
  * it decides whether the duplication is necessary or not and it searches for missing size_overflow attributes. After expand() it changes the orig node to the duplicated node
  * in the original stmt (first stmt) and it inserts the overflow check for the arg of the callee or for the return value.
  */
-static struct next_cgraph_node *handle_interesting_stmt(struct next_cgraph_node *cnodes, struct interesting_node *cur_node, struct cgraph_node *caller_node)
+static struct next_cgraph_node *handle_interesting_stmt(struct visited *visited, struct next_cgraph_node *cnodes, struct interesting_node *cur_node, struct cgraph_node *caller_node)
 {
 	enum precond ret;
-	struct pointer_set_t *visited;
 	tree new_node, orig_node = cur_node->node;
 
 	ret = check_preconditions(cur_node);
@@ -550,20 +572,17 @@ static struct next_cgraph_node *handle_interesting_stmt(struct next_cgraph_node 
 	if (ret == NO_CHECK_INSERT)
 		return cnodes;
 
-	visited = pointer_set_create();
 	new_node = expand(visited, caller_node, orig_node);
-	pointer_set_destroy(visited);
-
 	if (new_node == NULL_TREE)
 		return cnodes;
 
-	change_orig_node(cur_node, new_node);
+	change_orig_node(visited, cur_node, new_node);
 	check_size_overflow(caller_node, cur_node->first_stmt, TREE_TYPE(new_node), new_node, orig_node, BEFORE_STMT);
 
 	return cnodes;
 }
 
-// Check visited interesting nodes.
+// Check visited_fns interesting nodes.
 static bool is_in_interesting_node(struct interesting_node *head, const_gimple first_stmt, const_tree node, unsigned int num)
 {
 	struct interesting_node *cur;
@@ -923,36 +942,36 @@ static void free_interesting_node(struct interesting_node *head)
 	}
 }
 
-static struct visited *insert_visited_function(struct visited *head, struct interesting_node *cur_node)
+static struct visited_fns *insert_visited_fns_function(struct visited_fns *head, struct interesting_node *cur_node)
 {
-	struct visited *new_visited;
+	struct visited_fns *new_visited_fns;
 
-	new_visited = (struct visited *)xmalloc(sizeof(*new_visited));
-	new_visited->fndecl = cur_node->fndecl;
-	new_visited->num = cur_node->num;
-	new_visited->next = NULL;
+	new_visited_fns = (struct visited_fns *)xmalloc(sizeof(*new_visited_fns));
+	new_visited_fns->fndecl = cur_node->fndecl;
+	new_visited_fns->num = cur_node->num;
+	new_visited_fns->first_stmt = cur_node->first_stmt;
+	new_visited_fns->next = NULL;
 
 	if (!head)
-		return new_visited;
+		return new_visited_fns;
 
-	new_visited->next = head;
-	return new_visited;
+	new_visited_fns->next = head;
+	return new_visited_fns;
 }
 
-/* Check whether the function was already visited. If the fndecl, the arg count of the fndecl and the first_stmt (call or return) are same then
- * it is a visited function.
+/* Check whether the function was already visited_fns. If the fndecl, the arg count of the fndecl and the first_stmt (call or return) are same then
+ * it is a visited_fns function.
  */
-static bool is_visited_function(struct visited *head, struct interesting_node *cur_node)
+static bool is_visited_fns_function(struct visited_fns *head, struct interesting_node *cur_node)
 {
-	struct visited *cur;
+	struct visited_fns *cur;
 
 	if (!head)
-		return false;
-
-	if (get_stmt_flag(cur_node->first_stmt) != VISITED_STMT)
 		return false;
 
 	for (cur = head; cur; cur = cur->next) {
+		if (cur_node->first_stmt != cur->first_stmt)
+			continue;
 		if (!operand_equal_p(cur_node->fndecl, cur->fndecl, 0))
 			continue;
 		if (cur_node->num == cur->num)
@@ -989,8 +1008,9 @@ static void remove_all_size_overflow_asm(void)
  * the newly collected interesting functions (they are interesting if there is control flow between
  * the interesting stmts and them).
  */
-static struct visited *handle_function(struct cgraph_node *node, struct next_cgraph_node *next_node, struct visited *visited)
+static struct visited_fns *handle_function(struct cgraph_node *node, struct next_cgraph_node *next_node, struct visited_fns *visited_fns)
 {
+	struct visited *visited;
 	struct interesting_node *head, *cur_node;
 	struct next_cgraph_node *cur_cnodes, *cnodes_head = NULL;
 
@@ -999,28 +1019,29 @@ static struct visited *handle_function(struct cgraph_node *node, struct next_cgr
 
 	head = collect_interesting_stmts(next_node);
 
+	visited = create_visited();
 	for (cur_node = head; cur_node; cur_node = cur_node->next) {
-		if (is_visited_function(visited, cur_node))
+		if (is_visited_fns_function(visited_fns, cur_node))
 			continue;
-		cnodes_head = handle_interesting_stmt(cnodes_head, cur_node, node);
-		set_stmt_flag(cur_node->first_stmt, VISITED_STMT);
-		visited = insert_visited_function(visited, cur_node);
+		cnodes_head = handle_interesting_stmt(visited, cnodes_head, cur_node, node);
+		visited_fns = insert_visited_fns_function(visited_fns, cur_node);
 	}
 
+	free_visited(visited);
 	free_interesting_node(head);
 	remove_all_size_overflow_asm();
 	unset_current_function_decl();
 
 	for (cur_cnodes = cnodes_head; cur_cnodes; cur_cnodes = cur_cnodes->next)
-		visited = handle_function(cur_cnodes->current_function, cur_cnodes, visited);
+		visited_fns = handle_function(cur_cnodes->current_function, cur_cnodes, visited_fns);
 
 	free_next_cgraph_node(cnodes_head);
-	return visited;
+	return visited_fns;
 }
 
-static void free_visited(struct visited *head)
+static void free_visited_fns(struct visited_fns *head)
 {
-	struct visited *cur;
+	struct visited_fns *cur;
 
 	while (head) {
 		cur = head->next;
@@ -1029,32 +1050,11 @@ static void free_visited(struct visited *head)
 	}
 }
 
-// erase the local flag
-static void set_plf_false(void)
-{
-	basic_block bb;
-
-	FOR_ALL_BB_FN(bb, cfun) {
-		gimple_stmt_iterator si;
-
-		for (si = gsi_start_bb(bb); !gsi_end_p(si); gsi_next(&si))
-			set_stmt_flag(gsi_stmt(si), NO_FLAGS);
-		for (si = gsi_start_phis(bb); !gsi_end_p(si); gsi_next(&si))
-			set_stmt_flag(gsi_stmt(si), NO_FLAGS);
-	}
-}
-
 // Main entry point of the ipa pass: erases the plf flag of all stmts and iterates over all the functions
 unsigned int search_function(void)
 {
 	struct cgraph_node *node;
-	struct visited *visited = NULL;
-
-	FOR_EACH_FUNCTION_WITH_GIMPLE_BODY(node) {
-		set_current_function_decl(NODE_DECL(node));
-		set_plf_false();
-		unset_current_function_decl();
-	}
+	struct visited_fns *visited_fns = NULL;
 
 	FOR_EACH_FUNCTION_WITH_GIMPLE_BODY(node) {
 		gcc_assert(cgraph_function_flags_ready);
@@ -1062,10 +1062,10 @@ unsigned int search_function(void)
 		gcc_assert(node->reachable);
 #endif
 
-		visited = handle_function(node, NULL, visited);
+		visited_fns = handle_function(node, NULL, visited_fns);
 	}
 
-	free_visited(visited);
+	free_visited_fns(visited_fns);
 	return 0;
 }
 

@@ -370,7 +370,7 @@ bool is_a_constant_overflow(const_gimple stmt, const_tree rhs)
 	return true;
 }
 
-static tree change_assign_rhs(gimple stmt, const_tree orig_rhs, tree new_rhs)
+static tree change_assign_rhs(struct visited *visited, gimple stmt, const_tree orig_rhs, tree new_rhs)
 {
 	gimple assign;
 	gimple_stmt_iterator gsi = gsi_for_stmt(stmt);
@@ -378,12 +378,12 @@ static tree change_assign_rhs(gimple stmt, const_tree orig_rhs, tree new_rhs)
 
 	gcc_assert(is_gimple_assign(stmt));
 
-	assign = build_cast_stmt(origtype, new_rhs, CREATE_NEW_VAR, &gsi, BEFORE_STMT, false);
-	set_stmt_flag(assign, MY_STMT);
+	assign = build_cast_stmt(visited, origtype, new_rhs, CREATE_NEW_VAR, &gsi, BEFORE_STMT, false);
+	pointer_set_insert(visited->my_stmts, assign);
 	return gimple_assign_lhs(assign);
 }
 
-tree handle_intentional_overflow(struct pointer_set_t *visited, struct cgraph_node *caller_node, bool check_overflow, gimple stmt, tree change_rhs, tree new_rhs2)
+tree handle_intentional_overflow(struct visited *visited, struct cgraph_node *caller_node, bool check_overflow, gimple stmt, tree change_rhs, tree new_rhs2)
 {
 	tree new_rhs, orig_rhs;
 	void (*gimple_assign_set_rhs)(gimple, tree);
@@ -407,14 +407,14 @@ tree handle_intentional_overflow(struct pointer_set_t *visited, struct cgraph_no
 
 	check_size_overflow(caller_node, stmt, TREE_TYPE(change_rhs), change_rhs, orig_rhs, BEFORE_STMT);
 
-	new_rhs = change_assign_rhs(stmt, orig_rhs, change_rhs);
+	new_rhs = change_assign_rhs(visited, stmt, orig_rhs, change_rhs);
 	gimple_assign_set_rhs(stmt, new_rhs);
 	update_stmt(stmt);
 
 	return create_assign(visited, stmt, lhs, AFTER_STMT);
 }
 
-static bool is_subtraction_special(const_gimple stmt)
+static bool is_subtraction_special(struct visited *visited, const_gimple stmt)
 {
 	gimple rhs1_def_stmt, rhs2_def_stmt;
 	const_tree rhs1_def_stmt_rhs1, rhs2_def_stmt_rhs1, rhs1_def_stmt_lhs, rhs2_def_stmt_lhs;
@@ -448,12 +448,12 @@ static bool is_subtraction_special(const_gimple stmt)
 	if (GET_MODE_BITSIZE(rhs2_def_stmt_rhs1_mode) <= GET_MODE_BITSIZE(rhs2_def_stmt_lhs_mode))
 		return false;
 
-	set_stmt_flag(rhs1_def_stmt, NO_CAST_CHECK);
-	set_stmt_flag(rhs2_def_stmt, NO_CAST_CHECK);
+	pointer_set_insert(visited->no_cast_check, rhs1_def_stmt);
+	pointer_set_insert(visited->no_cast_check, rhs2_def_stmt);
 	return true;
 }
 
-static gimple create_binary_assign(enum tree_code code, gimple stmt, tree rhs1, tree rhs2)
+static gimple create_binary_assign(struct visited *visited, enum tree_code code, gimple stmt, tree rhs1, tree rhs2)
 {
 	gimple assign;
 	gimple_stmt_iterator gsi = gsi_for_stmt(stmt);
@@ -466,11 +466,11 @@ static gimple create_binary_assign(enum tree_code code, gimple stmt, tree rhs1, 
 
 	gsi_insert_before(&gsi, assign, GSI_NEW_STMT);
 	update_stmt(assign);
-	set_stmt_flag(assign, MY_STMT);
+	pointer_set_insert(visited->my_stmts, assign);
 	return assign;
 }
 
-static tree cast_to_TI_type(gimple stmt, tree node)
+static tree cast_to_TI_type(struct visited *visited, gimple stmt, tree node)
 {
 	gimple_stmt_iterator gsi;
 	gimple cast_stmt;
@@ -480,12 +480,12 @@ static tree cast_to_TI_type(gimple stmt, tree node)
 		return node;
 
 	gsi = gsi_for_stmt(stmt);
-	cast_stmt = build_cast_stmt(intTI_type_node, node, CREATE_NEW_VAR, &gsi, BEFORE_STMT, false);
-	set_stmt_flag(cast_stmt, MY_STMT);
+	cast_stmt = build_cast_stmt(visited, intTI_type_node, node, CREATE_NEW_VAR, &gsi, BEFORE_STMT, false);
+	pointer_set_insert(visited->my_stmts, cast_stmt);
 	return gimple_assign_lhs(cast_stmt);
 }
 
-static tree get_def_stmt_rhs(const_tree var)
+static tree get_def_stmt_rhs(struct visited *visited, const_tree var)
 {
 	tree rhs1, def_stmt_rhs1;
 	gimple rhs1_def_stmt, def_stmt_rhs1_def_stmt, def_stmt;
@@ -493,7 +493,7 @@ static tree get_def_stmt_rhs(const_tree var)
 	def_stmt = get_def_stmt(var);
 	if (!gimple_assign_cast_p(def_stmt))
 		return NULL_TREE;
-	gcc_assert(gimple_code(def_stmt) != GIMPLE_NOP && get_stmt_flag(def_stmt) == MY_STMT && gimple_assign_cast_p(def_stmt));
+	gcc_assert(gimple_code(def_stmt) != GIMPLE_NOP && pointer_set_contains(visited->my_stmts, def_stmt) && gimple_assign_cast_p(def_stmt));
 
 	rhs1 = gimple_assign_rhs1(def_stmt);
 	rhs1_def_stmt = get_def_stmt(rhs1);
@@ -517,7 +517,7 @@ static tree get_def_stmt_rhs(const_tree var)
 	}
 }
 
-tree handle_integer_truncation(struct pointer_set_t *visited, struct cgraph_node *caller_node, const_tree lhs)
+tree handle_integer_truncation(struct visited *visited, struct cgraph_node *caller_node, const_tree lhs)
 {
 	tree new_rhs1, new_rhs2;
 	tree new_rhs1_def_stmt_rhs1, new_rhs2_def_stmt_rhs1, new_lhs;
@@ -525,24 +525,24 @@ tree handle_integer_truncation(struct pointer_set_t *visited, struct cgraph_node
 	tree rhs1 = gimple_assign_rhs1(stmt);
 	tree rhs2 = gimple_assign_rhs2(stmt);
 
-	if (!is_subtraction_special(stmt))
+	if (!is_subtraction_special(visited, stmt))
 		return NULL_TREE;
 
 	new_rhs1 = expand(visited, caller_node, rhs1);
 	new_rhs2 = expand(visited, caller_node, rhs2);
 
-	new_rhs1_def_stmt_rhs1 = get_def_stmt_rhs(new_rhs1);
-	new_rhs2_def_stmt_rhs1 = get_def_stmt_rhs(new_rhs2);
+	new_rhs1_def_stmt_rhs1 = get_def_stmt_rhs(visited, new_rhs1);
+	new_rhs2_def_stmt_rhs1 = get_def_stmt_rhs(visited, new_rhs2);
 
 	if (new_rhs1_def_stmt_rhs1 == NULL_TREE || new_rhs2_def_stmt_rhs1 == NULL_TREE)
 		return NULL_TREE;
 
 	if (!types_compatible_p(TREE_TYPE(new_rhs1_def_stmt_rhs1), TREE_TYPE(new_rhs2_def_stmt_rhs1))) {
-		new_rhs1_def_stmt_rhs1 = cast_to_TI_type(stmt, new_rhs1_def_stmt_rhs1);
-		new_rhs2_def_stmt_rhs1 = cast_to_TI_type(stmt, new_rhs2_def_stmt_rhs1);
+		new_rhs1_def_stmt_rhs1 = cast_to_TI_type(visited, stmt, new_rhs1_def_stmt_rhs1);
+		new_rhs2_def_stmt_rhs1 = cast_to_TI_type(visited, stmt, new_rhs2_def_stmt_rhs1);
 	}
 
-	assign = create_binary_assign(MINUS_EXPR, stmt, new_rhs1_def_stmt_rhs1, new_rhs2_def_stmt_rhs1);
+	assign = create_binary_assign(visited, MINUS_EXPR, stmt, new_rhs1_def_stmt_rhs1, new_rhs2_def_stmt_rhs1);
 	new_lhs = gimple_assign_lhs(assign);
 	check_size_overflow(caller_node, assign, TREE_TYPE(new_lhs), new_lhs, rhs1, AFTER_STMT);
 

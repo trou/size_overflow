@@ -65,18 +65,18 @@ static bool is_size_overflow_type(const_tree var)
 	return false;
 }
 
-static void create_up_and_down_cast(struct pointer_set_t *visited, gimple use_stmt, tree orig_type, tree rhs)
+static void create_up_and_down_cast(struct visited *visited, gimple use_stmt, tree orig_type, tree rhs)
 {
 	const_tree orig_rhs1;
 	tree down_lhs, new_lhs, dup_type = TREE_TYPE(rhs);
 	gimple down_cast, up_cast;
 	gimple_stmt_iterator gsi = gsi_for_stmt(use_stmt);
 
-	down_cast = build_cast_stmt(orig_type, rhs, CREATE_NEW_VAR, &gsi, BEFORE_STMT, false);
+	down_cast = build_cast_stmt(visited, orig_type, rhs, CREATE_NEW_VAR, &gsi, BEFORE_STMT, false);
 	down_lhs = gimple_assign_lhs(down_cast);
 
 	gsi = gsi_for_stmt(use_stmt);
-	up_cast = build_cast_stmt(dup_type, down_lhs, CREATE_NEW_VAR, &gsi, BEFORE_STMT, false);
+	up_cast = build_cast_stmt(visited, dup_type, down_lhs, CREATE_NEW_VAR, &gsi, BEFORE_STMT, false);
 	new_lhs = gimple_assign_lhs(up_cast);
 
 	orig_rhs1 = gimple_assign_rhs1(use_stmt);
@@ -86,10 +86,10 @@ static void create_up_and_down_cast(struct pointer_set_t *visited, gimple use_st
 		gimple_assign_set_rhs2(use_stmt, new_lhs);
 	update_stmt(use_stmt);
 
-	set_stmt_flag(up_cast, MY_STMT);
-	set_stmt_flag(down_cast, MY_STMT);
-	pointer_set_insert(visited, up_cast);
-	pointer_set_insert(visited, down_cast);
+	pointer_set_insert(visited->my_stmts, up_cast);
+	pointer_set_insert(visited->my_stmts, down_cast);
+	pointer_set_insert(visited->skip_expr_casts, up_cast);
+	pointer_set_insert(visited->skip_expr_casts, down_cast);
 }
 
 static tree get_proper_unsigned_half_type(const_tree node)
@@ -121,7 +121,7 @@ static tree get_proper_unsigned_half_type(const_tree node)
 	return new_type;
 }
 
-static void insert_cast_rhs(struct pointer_set_t *visited, gimple stmt, tree rhs)
+static void insert_cast_rhs(struct visited *visited, gimple stmt, tree rhs)
 {
 	tree type;
 
@@ -136,7 +136,7 @@ static void insert_cast_rhs(struct pointer_set_t *visited, gimple stmt, tree rhs
 	create_up_and_down_cast(visited, stmt, type, rhs);
 }
 
-void insert_cast_expr(struct pointer_set_t *visited, gimple stmt)
+void insert_cast_expr(struct visited *visited, gimple stmt)
 {
 	tree rhs1, rhs2;
 
