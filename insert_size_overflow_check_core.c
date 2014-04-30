@@ -99,7 +99,7 @@ static tree cast_to_new_size_overflow_type(gimple stmt, tree rhs, tree size_over
 
 tree create_assign(struct pointer_set_t *visited, gimple oldstmt, tree rhs1, bool before)
 {
-	tree lhs, new_lhs;
+	tree lhs, dst_type;
 	gimple_stmt_iterator gsi;
 
 	if (rhs1 == NULL_TREE) {
@@ -145,8 +145,11 @@ tree create_assign(struct pointer_set_t *visited, gimple oldstmt, tree rhs1, boo
 		oldstmt = gsi_stmt(gsi);
 	}
 
-	new_lhs = cast_to_new_size_overflow_type(oldstmt, rhs1, get_size_overflow_type(oldstmt, lhs), before);
-	return new_lhs;
+	dst_type = get_size_overflow_type(oldstmt, lhs);
+
+	if (is_gimple_constant(rhs1))
+		return cast_a_tree(dst_type, rhs1);
+	return cast_to_new_size_overflow_type(oldstmt, rhs1, dst_type, before);
 }
 
 tree dup_assign(struct pointer_set_t *visited, gimple oldstmt, const_tree node, tree rhs1, tree rhs2, tree __unused rhs3)
@@ -750,6 +753,12 @@ static tree handle_binary_ops(struct pointer_set_t *visited, struct cgraph_node 
 		new_rhs1 = expand(visited, caller_node, rhs1);
 	if (TREE_CODE(rhs2) == SSA_NAME)
 		new_rhs2 = expand(visited, caller_node, rhs2);
+
+	if (skip_expr_on_double_type(def_stmt)) {
+		new_lhs = dup_assign(visited, def_stmt, lhs, new_rhs1, new_rhs2, NULL_TREE);
+		insert_cast_expr(visited, get_def_stmt(new_lhs));
+		return new_lhs;
+	}
 
 	if (is_a_neg_overflow(def_stmt, rhs2))
 		return handle_intentional_overflow(visited, caller_node, true, def_stmt, new_rhs1, NULL_TREE);

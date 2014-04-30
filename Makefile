@@ -27,7 +27,7 @@ $(PROG): size_overflow_plugin.c size_overflow_debug.c insert_size_overflow_asm.c
 	$(PLUGINCC) $(PLUGIN_FLAGS) -o $@ $^
 
 run: $(PROG)
-	$(CC) -fplugin=$(CURDIR)/$(PROG) test.c -o test -O2
+	$(CC) -fplugin=$(CURDIR)/$(PROG) test.c -o test -O2 -fdump-tree-all -fdump-ipa-all
 
 clean:
-	$(RM) -f $(PROG) test
+	$(RM) -f $(PROG) test test.c.*

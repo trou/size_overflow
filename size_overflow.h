@@ -112,6 +112,7 @@ extern tree create_assign(struct pointer_set_t *visited, gimple oldstmt, tree rh
 
 // remove_unnecessary_dup.c
 extern struct opt_pass *make_remove_unnecessary_dup_pass(void);
-
+extern void insert_cast_expr(struct pointer_set_t *visited, gimple stmt);
+extern bool skip_expr_on_double_type(const_gimple stmt);
 
 #endif

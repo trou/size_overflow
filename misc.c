@@ -150,6 +150,7 @@ gimple build_cast_stmt(tree dst_type, tree rhs, tree lhs, gimple_stmt_iterator *
 	gimple assign, def_stmt;
 
 	gcc_assert(dst_type != NULL_TREE && rhs != NULL_TREE);
+	gcc_assert(!is_gimple_constant(rhs));
 	if (gsi_end_p(*gsi) && before == AFTER_STMT)
 		gcc_unreachable();
 

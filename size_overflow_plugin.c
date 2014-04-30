@@ -194,7 +194,6 @@ int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gcc_version 
 	struct register_pass_info __unused dump_after_pass_info;
 	struct register_pass_info insert_size_overflow_check_info;
 	struct register_pass_info dce_pass_info;
-	struct register_pass_info remove_unnecessary_dup_pass_info;
 	static const struct ggc_root_tab gt_ggc_r_gt_size_overflow[] = {
 		{
 			.base = &report_size_overflow_decl,
@@ -227,14 +226,9 @@ int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gcc_version 
 	dump_after_pass_info.pos_op			= PASS_POS_INSERT_BEFORE;
 
 	dce_pass_info.pass				= make_dce_pass();
-	dce_pass_info.reference_pass_name		= "remove_unnecessary_dup";
+	dce_pass_info.reference_pass_name		= "vrp";
 	dce_pass_info.ref_pass_instance_number	= 1;
 	dce_pass_info.pos_op			= PASS_POS_INSERT_AFTER;
-
-	remove_unnecessary_dup_pass_info.pass				= make_remove_unnecessary_dup_pass();
-	remove_unnecessary_dup_pass_info.reference_pass_name		= "vrp";
-	remove_unnecessary_dup_pass_info.ref_pass_instance_number	= 1;
-	remove_unnecessary_dup_pass_info.pos_op			= PASS_POS_INSERT_AFTER;
 
 	if (!plugin_default_version_check(version, &gcc_version)) {
 		error(G_("incompatible gcc/plugin versions"));
@@ -257,9 +251,6 @@ int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gcc_version 
 //		register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &dump_before_pass_info);
 		register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &insert_size_overflow_check_info);
 //		register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &dump_after_pass_info);
-
-		register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &remove_unnecessary_dup_pass_info);
-
 		register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &dce_pass_info);
 	}
 	register_callback(plugin_name, PLUGIN_ATTRIBUTES, register_attributes, NULL);
