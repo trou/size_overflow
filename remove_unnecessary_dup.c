@@ -136,16 +136,20 @@ static void insert_cast_rhs(struct visited *visited, gimple stmt, tree rhs)
 	create_up_and_down_cast(visited, stmt, type, rhs);
 }
 
-void insert_cast_expr(struct visited *visited, gimple stmt)
+void insert_cast_expr(struct visited *visited, gimple stmt, enum intentional_overflow_type type)
 {
 	tree rhs1, rhs2;
 
-	gcc_assert(skip_expr_on_double_type(stmt));
+	if (type == NO_INTENTIONAL_OVERFLOW || type == RHS1_INTENTIONAL_OVERFLOW) {
+		rhs1 = gimple_assign_rhs1(stmt);
+		gcc_assert(is_size_overflow_type(rhs1));
+		insert_cast_rhs(visited, stmt, rhs1);
+	}
 
-	rhs1 = gimple_assign_rhs1(stmt);
-	insert_cast_rhs(visited, stmt, rhs1);
-
-	rhs2 = gimple_assign_rhs2(stmt);
-	insert_cast_rhs(visited, stmt, rhs2);
+	if (type == NO_INTENTIONAL_OVERFLOW || type == RHS2_INTENTIONAL_OVERFLOW) {
+		rhs2 = gimple_assign_rhs2(stmt);
+		gcc_assert(is_size_overflow_type(rhs2));
+		insert_cast_rhs(visited, stmt, rhs2);
+	}
 }
 

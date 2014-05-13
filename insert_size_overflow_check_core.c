@@ -718,6 +718,7 @@ static void __unused print_the_code_insertions(const_gimple stmt)
 
 static tree handle_binary_ops(struct visited *visited, struct cgraph_node *caller_node, tree lhs)
 {
+	enum intentional_overflow_type res;
 	tree rhs1, rhs2, new_lhs;
 	gimple def_stmt = get_def_stmt(lhs);
 	tree new_rhs1 = NULL_TREE;
@@ -754,9 +755,16 @@ static tree handle_binary_ops(struct visited *visited, struct cgraph_node *calle
 	if (TREE_CODE(rhs2) == SSA_NAME)
 		new_rhs2 = expand(visited, caller_node, rhs2);
 
+	res = add_mul_intentional_overflow(def_stmt);
+	if (res != NO_INTENTIONAL_OVERFLOW) {
+		new_lhs = dup_assign(visited, def_stmt, lhs, new_rhs1, new_rhs2, NULL_TREE);
+		insert_cast_expr(visited, get_def_stmt(new_lhs), res);
+		return new_lhs;
+	}
+
 	if (skip_expr_on_double_type(def_stmt)) {
 		new_lhs = dup_assign(visited, def_stmt, lhs, new_rhs1, new_rhs2, NULL_TREE);
-		insert_cast_expr(visited, get_def_stmt(new_lhs));
+		insert_cast_expr(visited, get_def_stmt(new_lhs), NO_INTENTIONAL_OVERFLOW);
 		return new_lhs;
 	}
 
