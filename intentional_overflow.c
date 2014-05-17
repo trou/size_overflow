@@ -662,8 +662,14 @@ static gimple get_dup_stmt(struct visited *visited, gimple stmt)
  * _11 = -_10;
  * _12 = (long int) _11; (_11_ no more uses)
  */
+static bool is_call_or_cast(gimple stmt)
+{
+	return gimple_assign_cast_p(stmt) || is_gimple_call(stmt);
+}
+
 static bool is_unsigned_cast_or_call_def_stmt(const_tree node)
 {
+	const_tree rhs;
 	gimple def_stmt;
 
 	if (node == NULL_TREE)
@@ -675,9 +681,16 @@ static bool is_unsigned_cast_or_call_def_stmt(const_tree node)
 	if (!def_stmt)
 		return false;
 
-	if (is_gimple_call(def_stmt))
+	if (is_call_or_cast(def_stmt))
 		return true;
-	return gimple_assign_cast_p(def_stmt);
+
+	if (!is_gimple_assign(def_stmt) || gimple_num_ops(def_stmt) != 2)
+		return false;
+	rhs = gimple_assign_rhs1(def_stmt);
+	def_stmt = get_def_stmt(rhs);
+	if (!def_stmt)
+		return false;
+	return is_call_or_cast(def_stmt);
 }
 
 void unsigned_signed_cast_intentional_overflow(struct visited *visited, gimple stmt)
