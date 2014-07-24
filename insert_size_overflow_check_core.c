@@ -735,7 +735,7 @@ static bool is_from_cast(const_tree node)
 }
 
 // Skip duplication when there is a minus expr and the type of rhs1 or rhs2 is a pointer_type.
-static bool is_a_ptr_minus(gimple stmt)
+static bool is_ptr_diff(gimple stmt)
 {
 	const_tree rhs1, rhs2, ptr1_rhs, ptr2_rhs;
 
@@ -767,7 +767,7 @@ static tree handle_binary_ops(struct visited *visited, struct cgraph_node *calle
 	tree new_rhs1 = NULL_TREE;
 	tree new_rhs2 = NULL_TREE;
 
-	if (is_a_ptr_minus(def_stmt))
+	if (is_ptr_diff(def_stmt))
 		return create_assign(visited, def_stmt, lhs, AFTER_STMT);
 
 	rhs1 = gimple_assign_rhs1(def_stmt);
