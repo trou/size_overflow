@@ -68,7 +68,6 @@
 #include "tree-pass.h"
 //#include "df.h"
 #include "predict.h"
-//#include "lto-streamer.h"
 #include "ipa-utils.h"
 
 #if BUILDING_GCC_VERSION >= 4009
@@ -83,6 +82,7 @@
 #include "tree-ssanames.h"
 #include "print-tree.h"
 #include "tree-eh.h"
+#include "stmt.h"
 #endif
 
 #include "gimple.h"
@@ -107,6 +107,8 @@ extern void debug_dominance_tree(enum cdi_direction dir, basic_block root);
 
 #define DECL_NAME_POINTER(node) IDENTIFIER_POINTER(DECL_NAME(node))
 #define DECL_NAME_LENGTH(node) IDENTIFIER_LENGTH(DECL_NAME(node))
+#define TYPE_NAME_POINTER(node) IDENTIFIER_POINTER(TYPE_NAME(node))
+#define TYPE_NAME_LENGTH(node) IDENTIFIER_LENGTH(TYPE_NAME(node))
 
 #if BUILDING_GCC_VERSION == 4005
 #define FOR_EACH_LOCAL_DECL(FUN, I, D) for (tree vars = (FUN)->local_decls; vars && (D = TREE_VALUE(vars)); vars = TREE_CHAIN(vars), I)
@@ -245,6 +247,8 @@ static inline bool gimple_store_p(gimple gs)
 #if BUILDING_GCC_VERSION >= 4007
 #define cgraph_create_edge(caller, callee, call_stmt, count, freq, nest) \
 	cgraph_create_edge((caller), (callee), (call_stmt), (count), (freq))
+#define cgraph_create_edge_including_clones(caller, callee, old_call_stmt, call_stmt, count, freq, nest, reason) \
+	cgraph_create_edge_including_clones((caller), (callee), (old_call_stmt), (call_stmt), (count), (freq), (reason))
 #endif
 
 #if BUILDING_GCC_VERSION <= 4008
@@ -270,6 +274,28 @@ static inline const char *get_tree_code_name(enum tree_code code)
 #define NODE_DECL(node) node->symbol.decl
 #else
 #define NODE_DECL(node) node->decl
+#endif
+
+#if BUILDING_GCC_VERSION >= 4009
+#define CGRAPH_NODE_NAME(node) node->name()
+#else
+#define CGRAPH_NODE_NAME(node) cgraph_node_name(node)
+#endif
+
+#if BUILDING_GCC_VERSION <= 4007
+#define FOR_EACH_FUNCTION(node) for ((node) = cgraph_nodes; (node); (node) = node->next)
+#endif
+
+#if BUILDING_GCC_VERSION == 4008
+#define PREV_SHARING_ASM_NAME(node) node->symbol.previous_sharing_asm_name
+#define PREV_SHARING_ASM_NAME_TYPE(node) node->symbol.type
+#define NEXT_SHARING_ASM_NAME(node) node->symbol.next_sharing_asm_name
+#define NEXT_SHARING_ASM_NAME_TYPE(node) node->symbol.type
+#elif BUILDING_GCC_VERSION == 4009
+#define PREV_SHARING_ASM_NAME(node) node->previous_sharing_asm_name
+#define PREV_SHARING_ASM_NAME_TYPE(node) PREV_SHARING_ASM_NAME(node)->type
+#define NEXT_SHARING_ASM_NAME(node) node->next_sharing_asm_name
+#define NEXT_SHARING_ASM_NAME_TYPE(node) NEXT_SHARING_ASM_NAME(node)->type
 #endif
 
 #if BUILDING_GCC_VERSION >= 4008

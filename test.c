@@ -4,8 +4,6 @@
 
 // grsec
 
-extern void *malloc(size_t size) __attribute__((size_overflow(1)));
-
 void * __attribute__((size_overflow(1))) coolmalloc(size_t size)
 {
 	return malloc(size);

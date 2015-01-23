@@ -14,16 +14,16 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 PLUGINCC := $(shell $(CONFIG_SHELL) gcc-plugin.sh "$(CC)" "$(CXX)" "$(CC)")
 
 ifeq ($(PLUGINCC),$(CC))
-PLUGIN_FLAGS := -I$(GCCPLUGINS_DIR)/include -std=gnu99
+PLUGIN_FLAGS := -I$(GCCPLUGINS_DIR)/include -std=gnu99 -Wno-unused-parameter -Wno-unused-variable
 else
-PLUGIN_FLAGS := -I$(GCCPLUGINS_DIR)/include -std=gnu++98 -fno-rtti -Wno-narrowing -Wno-unused-parameter
+PLUGIN_FLAGS := -I$(GCCPLUGINS_DIR)/include -std=gnu++98 -fno-rtti -Wno-narrowing -Wno-unused-parameter -Wno-unused-variable
 endif
 
 PLUGIN_FLAGS += -fPIC -shared -O2 -ggdb -Wall -W
 
 all: $(PROG)
 
-$(PROG): size_overflow_plugin.c size_overflow_debug.c insert_size_overflow_asm.c insert_size_overflow_check_core.c insert_size_overflow_check_ipa.c size_overflow_plugin_hash.c intentional_overflow.c misc.c remove_unnecessary_dup.c
+$(PROG): insert_size_overflow_asm.c intentional_overflow.c misc.c remove_unnecessary_dup.c size_overflow_debug.c size_overflow_ipa.c size_overflow_plugin.c size_overflow_plugin_hash.c size_overflow_transform.c size_overflow_transform_core.c
 	$(PLUGINCC) $(PLUGIN_FLAGS) -o $@ $^
 
 run: $(PROG)
