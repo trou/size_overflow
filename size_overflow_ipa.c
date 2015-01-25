@@ -570,7 +570,6 @@ static void size_overflow_node_duplication_hook(struct cgraph_node *src, struct 
 }
 
 #if BUILDING_GCC_VERSION == 4008 || BUILDING_GCC_VERSION == 4009
-
 static struct cgraph_node *get_prev_next_alias(struct cgraph_node *alias, bool next)
 {
 	while (alias) {
@@ -584,9 +583,9 @@ static struct cgraph_node *get_prev_next_alias(struct cgraph_node *alias, bool n
 			return alias;
 
 		if (next)
-			next_alias = NEXT_SHARING_ASM_NAME(alias);
+			next_alias = NODE_SYMBOL(alias)->next_sharing_asm_name;
 		else
-			next_alias = PREV_SHARING_ASM_NAME(alias);
+			next_alias = NODE_SYMBOL(alias)->previous_sharing_asm_name;
 		if (!next_alias)
 			return NULL;
 		alias = cgraph(next_alias);
@@ -602,16 +601,18 @@ static struct cgraph_node *get_alias_node(struct cgraph_node *node)
 	if (!node)
 		return NULL;
 
-	if (PREV_SHARING_ASM_NAME(node) && PREV_SHARING_ASM_NAME_TYPE(node) == SYMTAB_FUNCTION) {
-		alias = cgraph(PREV_SHARING_ASM_NAME(node));
+	gcc_assert(NODE_SYMBOL(node)->type == SYMTAB_FUNCTION);
+
+	if (NODE_SYMBOL(node)->previous_sharing_asm_name) {
+		alias = cgraph(NODE_SYMBOL(node)->previous_sharing_asm_name);
 		alias = get_prev_next_alias(alias, false);
 	}
 
 	if (alias)
 		return alias;
 
-	if (NEXT_SHARING_ASM_NAME(node) && NEXT_SHARING_ASM_NAME_TYPE(node) == SYMTAB_FUNCTION) {
-		alias = cgraph(NEXT_SHARING_ASM_NAME(node));
+	if (NODE_SYMBOL(node)->next_sharing_asm_name) {
+		alias = cgraph(NODE_SYMBOL(node)->next_sharing_asm_name);
 		alias = get_prev_next_alias(alias, true);
 	}
 
@@ -638,7 +639,6 @@ void size_overflow_node_removal_hook(struct cgraph_node *node, void *data __unus
 			cur->decl = NODE_DECL(alias_node);
 	}
 }
-
 #else
 void size_overflow_node_removal_hook(struct cgraph_node *node __unused, void *data __unused) {}
 #endif
