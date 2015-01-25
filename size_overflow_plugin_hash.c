@@ -251,6 +251,7 @@ unsigned int find_arg_number_tree(const_tree arg, const_tree func)
 	if (TREE_CODE(arg) == SSA_NAME)
 		arg = SSA_NAME_VAR(arg);
 
+	gcc_assert(DECL_ARGUMENTS(func) != NULL_TREE);
 	for (var = DECL_ARGUMENTS(func); var; var = TREE_CHAIN(var), argnum++) {
 		if (!operand_equal_p(arg, var, 0) && strcmp(DECL_NAME_POINTER(var), DECL_NAME_POINTER(arg)))
 			continue;

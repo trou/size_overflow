@@ -27,36 +27,6 @@ static struct cgraph_node_hook_list *function_insertion_hook_holder;
 static struct cgraph_2node_hook_list *node_duplication_hook_holder;
 static struct cgraph_node_hook_list *node_removal_hook_holder;
 
-static unsigned int get_correct_argnum_only_fndecl(const_tree fndecl, const_tree correct_argnum_of_fndecl, unsigned int num)
-{
-	unsigned int new_num;
-	const_tree fndecl_arg;
-	tree fndecl_arglist = DECL_ARGUMENTS(fndecl);
-	const_tree arg, target_fndecl_arglist = DECL_ARGUMENTS(correct_argnum_of_fndecl);
-
-	if (num == 0)
-		return num;
-
-	if (fndecl == correct_argnum_of_fndecl)
-		return num;
-
-	if (fndecl_arglist == NULL_TREE || target_fndecl_arglist == NULL_TREE)
-		return CANNOT_FIND_ARG;
-
-	if (list_length(target_fndecl_arglist) == list_length(fndecl_arglist))
-		return num;
-
-	fndecl_arg = chain_index(num - 1, fndecl_arglist);
-	gcc_assert(fndecl_arg != NULL_TREE);
-
-	for (arg = target_fndecl_arglist, new_num = 1; arg; arg = TREE_CHAIN(arg), new_num++) {
-		if (arg == fndecl_arg || !strcmp(DECL_NAME_POINTER(arg), DECL_NAME_POINTER(fndecl_arg)))
-			return new_num;
-	}
-
-	return CANNOT_FIND_ARG;
-}
-
 struct cgraph_node *get_cnode(const_tree fndecl)
 {
 #if BUILDING_GCC_VERSION <= 4005

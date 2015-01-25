@@ -115,6 +115,7 @@ extern bool search_interesting_args(tree fndecl, bool *argnums);
 
 
 // misc.c
+extern unsigned int get_correct_argnum_only_fndecl(const_tree fndecl, const_tree correct_argnum_of_fndecl, unsigned int num);
 extern void set_dominance_info(void);
 extern void unset_dominance_info(void);
 extern tree get_interesting_orig_fndecl_from_stmt(const_gimple stmt);
