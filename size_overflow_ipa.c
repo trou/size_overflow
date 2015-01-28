@@ -571,9 +571,11 @@ static struct cgraph_node *get_alias_node(struct cgraph_node *node)
 	if (!node)
 		return NULL;
 
-	gcc_assert(NODE_SYMBOL(node)->type == SYMTAB_FUNCTION);
-
-	if (NODE_SYMBOL(node)->previous_sharing_asm_name) {
+#if BUILDING_GCC_VERSION == 4008
+	if (NODE_SYMBOL(node)->previous_sharing_asm_name && NODE_SYMBOL(node)->previous_sharing_asm_name->symbol.type == SYMTAB_FUNCTION) {
+#else
+	if (NODE_SYMBOL(node)->previous_sharing_asm_name && NODE_SYMBOL(node)->previous_sharing_asm_name->type == SYMTAB_FUNCTION) {
+#endif
 		alias = cgraph(NODE_SYMBOL(node)->previous_sharing_asm_name);
 		alias = get_prev_next_alias(alias, false);
 	}
@@ -581,7 +583,11 @@ static struct cgraph_node *get_alias_node(struct cgraph_node *node)
 	if (alias)
 		return alias;
 
-	if (NODE_SYMBOL(node)->next_sharing_asm_name) {
+#if BUILDING_GCC_VERSION == 4008
+	if (NODE_SYMBOL(node)->next_sharing_asm_name && NODE_SYMBOL(node)->next_sharing_asm_name->symbol.type == SYMTAB_FUNCTION) {
+#else
+	if (NODE_SYMBOL(node)->next_sharing_asm_name && NODE_SYMBOL(node)->next_sharing_asm_name->type == SYMTAB_FUNCTION) {
+#endif
 		alias = cgraph(NODE_SYMBOL(node)->next_sharing_asm_name);
 		alias = get_prev_next_alias(alias, true);
 	}
