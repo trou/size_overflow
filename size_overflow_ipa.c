@@ -271,6 +271,9 @@ static next_interesting_function_t walk_use_def_next_functions(struct pointer_se
 	const_gimple def_stmt;
 	const_tree ssa_var;
 
+	if (skip_types(lhs))
+		return next_cnodes_head;
+
 	if (TREE_CODE(lhs) == PARM_DECL)
 		return handle_function(next_cnodes_head, current_function_decl, lhs);
 
