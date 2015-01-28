@@ -189,9 +189,6 @@ unsigned int get_correct_argnum_only_fndecl(const_tree fndecl, const_tree correc
 	if (fndecl_arglist == NULL_TREE || target_fndecl_arglist == NULL_TREE)
 		return CANNOT_FIND_ARG;
 
-	if (list_length(target_fndecl_arglist) == list_length(fndecl_arglist))
-		return num;
-
 	fndecl_arg = chain_index(num - 1, fndecl_arglist);
 	gcc_assert(fndecl_arg != NULL_TREE);
 
@@ -208,12 +205,6 @@ static unsigned int clone_argnum_on_orig(struct cgraph_node *new_node, struct cg
 {
 	bitmap args_to_skip;
 	unsigned int i, new_argnum = clone_argnum;
-	const_tree new_decl = NODE_DECL(new_node);
-	const_tree old_decl = NODE_DECL(old_node);
-
-	// handle isra functions (there are no args_to_skip and clone field in cgraph_node)
-	if (DECL_ARTIFICIAL(new_decl) || DECL_ARTIFICIAL(old_decl))
-		return get_correct_argnum_only_fndecl(old_decl, new_decl, clone_argnum);
 
 	if (unchanged_arglist(new_node, old_node))
 		return clone_argnum;
@@ -232,12 +223,6 @@ static unsigned int orig_argnum_on_clone(struct cgraph_node *new_node, struct cg
 {
 	bitmap args_to_skip;
 	unsigned int i, new_argnum = orig_argnum;
-	const_tree new_decl = NODE_DECL(new_node);
-	const_tree old_decl = NODE_DECL(old_node);
-
-	// handle isra functions (there are no args_to_skip and clone field in cgraph_node)
-	if (DECL_ARTIFICIAL(new_decl) || DECL_ARTIFICIAL(old_decl))
-		return get_correct_argnum_only_fndecl(old_decl, new_decl, orig_argnum);
 
 	if (unchanged_arglist(new_node, old_node))
 		return orig_argnum;
@@ -259,20 +244,30 @@ static unsigned int orig_argnum_on_clone(struct cgraph_node *new_node, struct cg
 unsigned int get_correct_argnum(struct cgraph_node *node, struct cgraph_node *correct_argnum_of_node, unsigned int argnum)
 {
 	bool node_clone, correct_argnum_of_node_clone;
-
-	gcc_assert(correct_argnum_of_node);
+	const_tree correct_argnum_of_node_decl, node_decl;
 
 	if (node == correct_argnum_of_node)
 		return argnum;
 	if (argnum == 0)
 		return argnum;
 
-	if (node)
-		node_clone = made_by_compiler(NODE_DECL(node));
-	else
-		node_clone = false;
+	correct_argnum_of_node_decl = NODE_DECL(correct_argnum_of_node);
+	gcc_assert(correct_argnum_of_node_decl != NULL_TREE);
+	gcc_assert(correct_argnum_of_node && !DECL_ARTIFICIAL(correct_argnum_of_node_decl));
 
-	correct_argnum_of_node_clone = made_by_compiler(NODE_DECL(correct_argnum_of_node));
+	if (node) {
+		node_decl = NODE_DECL(node);
+		gcc_assert(!DECL_ARTIFICIAL(node_decl));
+		node_clone = made_by_compiler(node_decl);
+	} else {
+		node_decl = NULL_TREE;
+		node_clone = false;
+	}
+
+	if (correct_argnum_of_node_decl == node_decl)
+		return argnum;
+
+	correct_argnum_of_node_clone = made_by_compiler(correct_argnum_of_node_decl);
 	// the original decl is lost if both nodes are clones
 	if (node_clone && correct_argnum_of_node_clone) {
 		gcc_assert(unchanged_arglist(node, correct_argnum_of_node));

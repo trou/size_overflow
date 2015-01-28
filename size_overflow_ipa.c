@@ -146,7 +146,8 @@ static next_interesting_function_t create_orig_next_node_for_a_clone(const_tree 
 	unsigned int orig_num;
 
 	decl = get_orig_fndecl(clone_fndecl);
-	if (get_cnode(decl))
+
+	if (get_cnode(decl) && !DECL_ARTIFICIAL(clone_fndecl))
 		orig_num = get_correct_argnum(get_cnode(clone_fndecl), get_cnode(decl), num);
 	else
 		orig_num = get_correct_argnum_only_fndecl(clone_fndecl, decl, num);
@@ -524,7 +525,10 @@ static void size_overflow_node_duplication_hook(struct cgraph_node *src, struct 
 			new_argnum = get_correct_argnum(src, dst, cur->num);
 		} else if (cur->orig_next_node) {
 			orig_next_node = cur->orig_next_node;
-			new_argnum = get_correct_argnum(get_cnode(orig_next_node->decl), dst, orig_next_node->num);
+			if (DECL_ARTIFICIAL(cur->decl))
+				new_argnum = get_correct_argnum_only_fndecl(orig_next_node->decl, NODE_DECL(dst), orig_next_node->num);
+			else
+				new_argnum = get_correct_argnum(get_cnode(orig_next_node->decl), dst, orig_next_node->num);
 		// if gcc loses the original function decl of src then use the clone's argnum
 		} else {
 			new_argnum = cur->num;
