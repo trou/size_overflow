@@ -91,6 +91,8 @@ static tree cast_to_new_size_overflow_type(struct visited *visited, gimple stmt,
 
 	gsi = gsi_for_stmt(stmt);
 	new_stmt = build_cast_stmt(visited, size_overflow_type, rhs, CREATE_NEW_VAR, &gsi, before, false);
+	if (gimple_assign_cast_p(new_stmt))
+		gimple_assign_set_rhs_code(new_stmt, CONVERT_EXPR);
 	pointer_set_insert(visited->my_stmts, new_stmt);
 
 	lhs = get_lhs(new_stmt);
@@ -616,7 +618,7 @@ static tree create_cast_overflow_check(struct visited *visited, tree new_rhs1, g
 		{ true,  false, true,  true  }, // lhs < rhs
 	};
 
-	// skip lhs check on signed SI -> HI cast or signed SI -> QI cast !!!!
+	// skip lhs check on signed SI -> HI cast or signed SI -> QI cast
 	if (rhs_mode == SImode && !TYPE_UNSIGNED(rhs_type) && (lhs_mode == HImode || lhs_mode == QImode))
 		return create_assign(visited, stmt, lhs, AFTER_STMT);
 

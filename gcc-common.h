@@ -210,7 +210,7 @@ static inline bool is_simple_builtin(tree decl)
 	sscanf(get_random_seed(noinit), "%" HOST_WIDE_INT_PRINT "x", &seed);	\
 	seed * seed; })
 
-static inline bool gimple_clobber_p(gimple s)
+static inline bool gimple_clobber_p(gimple s __unused)
 {
 	return false;
 }
