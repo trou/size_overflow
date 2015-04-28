@@ -656,6 +656,12 @@ static inline cgraph_node_ptr ipa_ref_referring_node(struct ipa_ref *ref)
 {
 	return dyn_cast<cgraph_node_ptr>(ref->referring);
 }
+
+static inline void ipa_remove_stmt_references(symtab_node *referring_node, gimple stmt)
+{
+	referring_node->remove_stmt_references(stmt);
+}
+
 #endif
 
 #endif

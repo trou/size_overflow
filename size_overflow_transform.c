@@ -379,11 +379,7 @@ static void remove_size_overflow_asm(gimple stmt)
 	if (gimple_asm_noutputs(as_a_gasm(stmt)) == 0) {
 		gsi = gsi_for_stmt(stmt);
 
-#if BUILDING_GCC_VERSION >= 5000
-		cgraph_get_node(current_function_decl)->remove_stmt_references(stmt);
-#else
 		ipa_remove_stmt_references(cgraph_get_node(current_function_decl), stmt);
-#endif
 		gsi_remove(&gsi, true);
 		return;
 	}
