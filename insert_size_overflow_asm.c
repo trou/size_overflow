@@ -265,7 +265,7 @@ static void set_argnum_attribute(const_tree attr, bool *argnums)
 
 	gcc_assert(attr);
 	for (attr_value = TREE_VALUE(attr); attr_value; attr_value = TREE_CHAIN(attr_value)) {
-		argnum = TREE_INT_CST_LOW(TREE_VALUE(attr_value));
+		argnum = (unsigned int)tree_to_uhwi(TREE_VALUE(attr_value));
 		argnums[argnum] = true;
 	}
 }

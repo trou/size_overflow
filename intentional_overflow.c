@@ -115,7 +115,7 @@ static bool is_turn_off_intentional_attr(const_tree decl)
 	if (param_head == NULL_TREE)
 		return false;
 
-	if (tree_to_shwi(param_head) == -1)
+	if (tree_to_shwi(TREE_VALUE(param_head)) == -1)
 		return true;
 	return false;
 }
@@ -129,7 +129,7 @@ static bool is_end_intentional_intentional_attr(const_tree decl)
 	if (param_head == NULL_TREE)
 		return false;
 
-	if (tree_to_shwi(param_head) == 0)
+	if (tree_to_shwi(TREE_VALUE(param_head)) == 0)
 		return true;
 	return false;
 }
@@ -143,9 +143,14 @@ static bool is_yes_intentional_attr(const_tree decl, unsigned int argnum)
 		return false;
 
 	param_head = get_attribute_param(decl);
-	for (param = param_head; param; param = TREE_CHAIN(param))
-		if (argnum == tree_to_uhwi(param))
+	for (param = param_head; param; param = TREE_CHAIN(param)) {
+		int argval = tree_to_shwi(TREE_VALUE(param));
+
+		if (argval <= 0)
+			continue;
+		if (argnum == (unsigned int)argval)
 			return true;
+	}
 	return false;
 }
 
