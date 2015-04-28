@@ -20,7 +20,7 @@ http://forums.grsecurity.net/viewtopic.php?f=7&t=3043
 Compiling & Usage
 -----------------
 
-##### gcc 4.5 - 4.9:
+##### gcc 4.5 - 5.0:
 
 ```shell
 $ make clean; make

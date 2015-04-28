@@ -145,9 +145,10 @@ tree cast_a_tree(tree type, tree var)
 	return fold_convert(type, var);
 }
 
-gimple build_cast_stmt(struct visited *visited, tree dst_type, tree rhs, tree lhs, gimple_stmt_iterator *gsi, bool before, bool force)
+gassign *build_cast_stmt(struct visited *visited, tree dst_type, tree rhs, tree lhs, gimple_stmt_iterator *gsi, bool before, bool force)
 {
-	gimple assign, def_stmt;
+	gassign *assign;
+	gimple def_stmt;
 
 	gcc_assert(dst_type != NULL_TREE && rhs != NULL_TREE);
 	gcc_assert(!is_gimple_constant(rhs));
@@ -156,7 +157,7 @@ gimple build_cast_stmt(struct visited *visited, tree dst_type, tree rhs, tree lh
 
 	def_stmt = get_def_stmt(rhs);
 	if (def_stmt && gimple_code(def_stmt) != GIMPLE_NOP && skip_cast(dst_type, rhs, force) && pointer_set_contains(visited->my_stmts, def_stmt))
-		return def_stmt;
+		return as_a_gassign(def_stmt);
 
 	if (lhs == CREATE_NEW_VAR)
 		lhs = create_new_var(dst_type);
@@ -366,14 +367,14 @@ tree get_orig_fndecl(const_tree clone_fndecl)
 	return (tree)clone_fndecl;
 }
 
-static tree get_interesting_fndecl_from_stmt(const_gimple stmt)
+static tree get_interesting_fndecl_from_stmt(const gcall *stmt)
 {
 	if (gimple_call_num_args(stmt) == 0)
 		return NULL_TREE;
 	return gimple_call_fndecl(stmt);
 }
 
-tree get_interesting_orig_fndecl_from_stmt(const_gimple stmt)
+tree get_interesting_orig_fndecl_from_stmt(const gcall *stmt)
 {
 	tree fndecl;
 
