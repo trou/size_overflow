@@ -45,15 +45,15 @@ void create_up_and_down_cast(struct visited *visited, gassign *use_stmt, tree or
 {
 	const_tree orig_rhs1;
 	tree down_lhs, new_lhs, dup_type = TREE_TYPE(rhs);
-	gassign *down_cast, *up_cast;
+	const_gimple down_cast, up_cast;
 	gimple_stmt_iterator gsi = gsi_for_stmt(use_stmt);
 
 	down_cast = build_cast_stmt(visited, orig_type, rhs, CREATE_NEW_VAR, &gsi, BEFORE_STMT, false);
-	down_lhs = gimple_assign_lhs(down_cast);
+	down_lhs = get_lhs(down_cast);
 
 	gsi = gsi_for_stmt(use_stmt);
 	up_cast = build_cast_stmt(visited, dup_type, down_lhs, CREATE_NEW_VAR, &gsi, BEFORE_STMT, false);
-	new_lhs = gimple_assign_lhs(up_cast);
+	new_lhs = get_lhs(up_cast);
 
 	orig_rhs1 = gimple_assign_rhs1(use_stmt);
 	if (operand_equal_p(orig_rhs1, rhs, 0))

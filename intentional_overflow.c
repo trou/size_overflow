@@ -596,13 +596,13 @@ bool is_a_constant_overflow(const gassign *stmt, const_tree rhs)
 
 static tree change_assign_rhs(struct visited *visited, gassign *stmt, const_tree orig_rhs, tree new_rhs)
 {
-	gassign *assign;
+	const_gimple assign;
 	gimple_stmt_iterator gsi = gsi_for_stmt(stmt);
 	tree origtype = TREE_TYPE(orig_rhs);
 
 	assign = build_cast_stmt(visited, origtype, new_rhs, CREATE_NEW_VAR, &gsi, BEFORE_STMT, false);
 	pointer_set_insert(visited->my_stmts, assign);
-	return gimple_assign_lhs(assign);
+	return get_lhs(assign);
 }
 
 tree handle_intentional_overflow(struct visited *visited, bool check_overflow, gassign *stmt, tree change_rhs, tree new_rhs2)
@@ -695,7 +695,7 @@ static gassign *create_binary_assign(struct visited *visited, enum tree_code cod
 static tree cast_to_TI_type(struct visited *visited, gassign *stmt, tree node)
 {
 	gimple_stmt_iterator gsi;
-	gassign *cast_stmt;
+	const_gimple cast_stmt;
 	tree type = TREE_TYPE(node);
 
 	if (types_compatible_p(type, intTI_type_node))
@@ -704,7 +704,7 @@ static tree cast_to_TI_type(struct visited *visited, gassign *stmt, tree node)
 	gsi = gsi_for_stmt(stmt);
 	cast_stmt = build_cast_stmt(visited, intTI_type_node, node, CREATE_NEW_VAR, &gsi, BEFORE_STMT, false);
 	pointer_set_insert(visited->my_stmts, cast_stmt);
-	return gimple_assign_lhs(cast_stmt);
+	return get_lhs(cast_stmt);
 }
 
 static tree get_def_stmt_rhs(struct visited *visited, const_tree var)

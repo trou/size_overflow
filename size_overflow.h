@@ -204,12 +204,13 @@ extern void set_current_function_decl(tree fndecl);
 extern void unset_current_function_decl(void);
 extern gimple get_def_stmt(const_tree node);
 extern tree create_new_var(tree type);
-extern gassign *build_cast_stmt(struct visited *visited, tree dst_type, tree rhs, tree lhs, gimple_stmt_iterator *gsi, bool before, bool force);
+extern gimple build_cast_stmt(struct visited *visited, tree dst_type, tree rhs, tree lhs, gimple_stmt_iterator *gsi, bool before, bool force);
 extern bool skip_types(const_tree var);
 extern tree cast_a_tree(tree type, tree var);
 extern bool is_size_overflow_type(const_tree var);
 extern bool made_by_compiler(const_tree decl);
 extern gimple get_fnptr_def_stmt(const_tree fn_ptr);
+extern tree get_lhs(const_gimple stmt);
 
 
 // size_overflow_transform.c

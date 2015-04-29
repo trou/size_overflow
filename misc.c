@@ -145,7 +145,7 @@ tree cast_a_tree(tree type, tree var)
 	return fold_convert(type, var);
 }
 
-gassign *build_cast_stmt(struct visited *visited, tree dst_type, tree rhs, tree lhs, gimple_stmt_iterator *gsi, bool before, bool force)
+gimple build_cast_stmt(struct visited *visited, tree dst_type, tree rhs, tree lhs, gimple_stmt_iterator *gsi, bool before, bool force)
 {
 	gassign *assign;
 	gimple def_stmt;
@@ -157,7 +157,7 @@ gassign *build_cast_stmt(struct visited *visited, tree dst_type, tree rhs, tree 
 
 	def_stmt = get_def_stmt(rhs);
 	if (def_stmt && gimple_code(def_stmt) != GIMPLE_NOP && skip_cast(dst_type, rhs, force) && pointer_set_contains(visited->my_stmts, def_stmt))
-		return as_a_gassign(def_stmt);
+		return def_stmt;
 
 	if (lhs == CREATE_NEW_VAR)
 		lhs = create_new_var(dst_type);
@@ -423,5 +423,19 @@ bool is_valid_cgraph_node(struct cgraph_node *node)
 	if (node->thunk.thunk_p || node->alias)
 		return false;
 	return true;
+}
+
+tree get_lhs(const_gimple stmt)
+{
+	switch (gimple_code(stmt)) {
+	case GIMPLE_ASSIGN:
+	case GIMPLE_CALL:
+		return gimple_get_lhs(stmt);
+	case GIMPLE_PHI:
+		return gimple_phi_result(stmt);
+	default:
+		debug_gimple_stmt((gimple)stmt);
+		gcc_unreachable();
+	}
 }
 

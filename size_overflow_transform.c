@@ -21,12 +21,12 @@
 
 static tree cast_to_orig_type(struct visited *visited, gimple stmt, const_tree orig_node, tree new_node)
 {
-	const gassign *assign;
+	const_gimple assign;
 	tree orig_type = TREE_TYPE(orig_node);
 	gimple_stmt_iterator gsi = gsi_for_stmt(stmt);
 
 	assign = build_cast_stmt(visited, orig_type, new_node, CREATE_NEW_VAR, &gsi, BEFORE_STMT, false);
-	return gimple_assign_lhs(assign);
+	return get_lhs(assign);
 }
 
 static void change_size_overflow_asm_input(gasm *stmt, tree new_input)
