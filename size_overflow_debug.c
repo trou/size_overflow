@@ -1,8 +1,9 @@
 /*
- * Copyright 2011-2014 by Emese Revfy <re.emese@gmail.com>
+ * Copyright 2011-2015 by Emese Revfy <re.emese@gmail.com>
  * Licensed under the GPL v2, or (at your option) v3
  *
  * Homepage:
+ * https://github.com/ephox-gcc-plugins
  * http://www.grsecurity.net/~ephox/overflow_plugin/
  *
  * Documentation:
@@ -19,7 +20,7 @@
 
 #include "gcc-common.h"
 
-static unsigned int dump_functions(void)
+static unsigned int __unused dump_functions(void)
 {
 	struct cgraph_node *node;
 
@@ -64,7 +65,8 @@ static struct ipa_opt_pass_d dump_pass = {
 #if BUILDING_GCC_VERSION >= 4008
 		.optinfo_flags		= OPTGROUP_NONE,
 #endif
-#if BUILDING_GCC_VERSION >= 4009
+#if BUILDING_GCC_VERSION >= 5000
+#elif BUILDING_GCC_VERSION >= 4009
 		.has_gate		= false,
 		.has_execute		= true,
 #else
@@ -101,7 +103,11 @@ namespace {
 class dump_pass : public ipa_opt_pass_d {
 public:
 	dump_pass() : ipa_opt_pass_d(dump_pass_data, g, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL) {}
+#if BUILDING_GCC_VERSION >= 5000
+	virtual unsigned int execute(function *) { return dump_functions(); }
+#else
 	unsigned int execute() { return dump_functions(); }
+#endif
 };
 }
 #endif

@@ -19,7 +19,7 @@ else
 PLUGIN_FLAGS := -I$(GCCPLUGINS_DIR)/include -std=gnu++98 -fno-rtti -Wno-narrowing -Wno-unused-parameter
 endif
 
-PLUGIN_FLAGS += -fPIC -shared -O2 -ggdb -Wall -W
+PLUGIN_FLAGS += -fPIC -shared -O0 -ggdb -Wall -W
 
 all: $(PROG)
 
