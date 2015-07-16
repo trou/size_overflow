@@ -31,7 +31,7 @@ tree size_overflow_type_DI;
 tree size_overflow_type_TI;
 
 static struct plugin_info size_overflow_plugin_info = {
-	.version	= "20140725_01",
+	.version	= "20140725_02",
 	.help		= "no-size-overflow\tturn off size overflow checking\n",
 };
 
@@ -85,7 +85,7 @@ static tree handle_intentional_overflow_attribute(tree *node, tree __unused name
 		return NULL_TREE;
 	}
 
-	if (tree_to_shwi(args) != 0)
+	if (tree_to_shwi(TREE_VALUE(args)) != 0)
 		return NULL_TREE;
 
 	for (; args; args = TREE_CHAIN(args)) {

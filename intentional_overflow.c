@@ -49,7 +49,7 @@ bool is_turn_off_intentional_attr(const_tree decl)
 	if (param_head == NULL_TREE)
 		return false;
 
-	if (tree_to_shwi(param_head) == -1)
+	if (tree_to_shwi(TREE_VALUE(param_head)) == -1)
 		return true;
 	return false;
 }
@@ -679,7 +679,7 @@ static gimple get_dup_stmt(struct visited *visited, gimple stmt)
  */
 static bool is_call_or_cast(gimple stmt)
 {
-	return gimple_assign_cast_p(stmt) || is_gimple_call(as_a_const_gcall(stmt));
+	return gimple_assign_cast_p(stmt) || is_gimple_call(stmt);
 }
 
 static bool is_unsigned_cast_or_call_def_stmt(const_tree node)

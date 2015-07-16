@@ -55,6 +55,7 @@ static unsigned int __unused dump_functions(void)
 }
 
 #if BUILDING_GCC_VERSION >= 4009
+namespace {
 static const struct pass_data dump_pass_data = {
 #else
 static struct ipa_opt_pass_d dump_pass = {
@@ -66,7 +67,7 @@ static struct ipa_opt_pass_d dump_pass = {
 		.optinfo_flags		= OPTGROUP_NONE,
 #endif
 #if BUILDING_GCC_VERSION >= 5000
-#elif BUILDING_GCC_VERSION >= 4009
+#elif BUILDING_GCC_VERSION == 4009
 		.has_gate		= false,
 		.has_execute		= true,
 #else
@@ -99,7 +100,6 @@ static struct ipa_opt_pass_d dump_pass = {
 };
 
 #if BUILDING_GCC_VERSION >= 4009
-namespace {
 class dump_pass : public ipa_opt_pass_d {
 public:
 	dump_pass() : ipa_opt_pass_d(dump_pass_data, g, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL) {}
@@ -110,13 +110,14 @@ public:
 #endif
 };
 }
-#endif
 
+opt_pass *make_dump_pass(void)
+{
+	return new dump_pass();
+}
+#else
 struct opt_pass *make_dump_pass(void)
 {
-#if BUILDING_GCC_VERSION >= 4009
-	return new dump_pass();
-#else
 	return &dump_pass.pass;
-#endif
 }
+#endif

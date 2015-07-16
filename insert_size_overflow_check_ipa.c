@@ -1089,6 +1089,7 @@ unsigned int search_function(void)
 }
 
 #if BUILDING_GCC_VERSION >= 4009
+namespace {
 static const struct pass_data insert_size_overflow_check_data = {
 #else
 static struct ipa_opt_pass_d insert_size_overflow_check = {
@@ -1100,7 +1101,7 @@ static struct ipa_opt_pass_d insert_size_overflow_check = {
 		.optinfo_flags		= OPTGROUP_NONE,
 #endif
 #if BUILDING_GCC_VERSION >= 5000
-#elif BUILDING_GCC_VERSION >= 4009
+#elif BUILDING_GCC_VERSION == 4009
 		.has_gate		= false,
 		.has_execute		= true,
 #else
@@ -1133,7 +1134,6 @@ static struct ipa_opt_pass_d insert_size_overflow_check = {
 };
 
 #if BUILDING_GCC_VERSION >= 4009
-namespace {
 class insert_size_overflow_check : public ipa_opt_pass_d {
 public:
 	insert_size_overflow_check() : ipa_opt_pass_d(insert_size_overflow_check_data, g, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL) {}
@@ -1144,14 +1144,14 @@ public:
 #endif
 };
 }
-#endif
 
+opt_pass *make_insert_size_overflow_check(void)
+{
+	return new insert_size_overflow_check();
+}
+#else
 struct opt_pass *make_insert_size_overflow_check(void)
 {
-#if BUILDING_GCC_VERSION >= 4009
-	return new insert_size_overflow_check();
-#else
 	return &insert_size_overflow_check.pass;
-#endif
 }
-
+#endif

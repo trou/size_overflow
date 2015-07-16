@@ -507,9 +507,10 @@ static void walk_use_def_ptr(gimple_set *visited, const_tree lhs)
 
 			walk_use_def_ptr(visited, arg);
 		}
+		break;
 	}
 	case GIMPLE_ASSIGN: {
-		const gassign *assign = as_a_const_gassign(def_stmt);
+		gassign *assign = as_a_gassign(def_stmt);
 
 		switch (gimple_num_ops(assign)) {
 		case 2:
@@ -704,6 +705,7 @@ static unsigned int search_interesting_functions(void)
  * that the ipa pass will detect and insert the size overflow checks for.
  */
 #if BUILDING_GCC_VERSION >= 4009
+namespace {
 static const struct pass_data insert_size_overflow_asm_pass_data = {
 #else
 static struct gimple_opt_pass insert_size_overflow_asm_pass = {
@@ -715,7 +717,7 @@ static struct gimple_opt_pass insert_size_overflow_asm_pass = {
 		.optinfo_flags		= OPTGROUP_NONE,
 #endif
 #if BUILDING_GCC_VERSION >= 5000
-#elif BUILDING_GCC_VERSION >= 4009
+#elif BUILDING_GCC_VERSION == 4009
 		.has_gate		= false,
 		.has_execute		= true,
 #else
@@ -737,7 +739,6 @@ static struct gimple_opt_pass insert_size_overflow_asm_pass = {
 };
 
 #if BUILDING_GCC_VERSION >= 4009
-namespace {
 class insert_size_overflow_asm_pass : public gimple_opt_pass {
 public:
 	insert_size_overflow_asm_pass() : gimple_opt_pass(insert_size_overflow_asm_pass_data, g) {}
@@ -748,13 +749,14 @@ public:
 #endif
 };
 }
-#endif
 
+opt_pass *make_insert_size_overflow_asm_pass(void)
+{
+	return new insert_size_overflow_asm_pass();
+}
+#else
 struct opt_pass *make_insert_size_overflow_asm_pass(void)
 {
-#if BUILDING_GCC_VERSION >= 4009
-	return new insert_size_overflow_asm_pass();
-#else
 	return &insert_size_overflow_asm_pass.pass;
-#endif
 }
+#endif
