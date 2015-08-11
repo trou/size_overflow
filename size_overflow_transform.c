@@ -149,17 +149,22 @@ static void handle_interesting_stmt(struct visited *visited, struct interesting_
 	}
 }
 
-static bool is_interesting_function(const_tree decl, unsigned int num)
+static bool is_interesting_function(tree decl, unsigned int num)
 {
 	const struct size_overflow_hash *so_hash;
+	struct fn_raw_data raw_data;
 
-	if (get_global_next_interesting_function_entry_with_hash(decl, DECL_NAME_POINTER(decl), num, YES_SO_MARK))
+	raw_data.decl = decl;
+	raw_data.decl_str = DECL_NAME_POINTER(decl);
+	raw_data.num = num;
+	raw_data.marked = YES_SO_MARK;
+	if (get_global_next_interesting_function_entry_with_hash(&raw_data))
 		return true;
 
-	if (made_by_compiler(decl))
+	if (made_by_compiler(raw_data.decl))
 		return false;
 
-	so_hash = get_size_overflow_hash_entry_tree(decl, num);
+	so_hash = get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num);
 	return so_hash != NULL;
 }
 

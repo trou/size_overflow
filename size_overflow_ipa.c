@@ -69,72 +69,69 @@ static const char* get_decl_context(const_tree decl)
  *   * if marked is ASM_STMT_SO_MARK or YES_SO_MARK then filter accordingly
  *   * if num is CANNOT_FIND_ARG then ignore it
  */
-next_interesting_function_t get_global_next_interesting_function_entry(const char *decl_name, const char *context, unsigned int hash, unsigned int num, enum size_overflow_mark marked)
+next_interesting_function_t get_global_next_interesting_function_entry(struct fn_raw_data *raw_data)
 {
 	next_interesting_function_t cur_node, head;
 
-	head = global_next_interesting_function[hash];
+	head = global_next_interesting_function[raw_data->hash];
 	for (cur_node = head; cur_node; cur_node = cur_node->next) {
-		if ((marked == ASM_STMT_SO_MARK || marked == YES_SO_MARK) && cur_node->marked != marked)
-			continue;
-		if (compare_next_interesting_functions(cur_node, decl_name, context, num))
+		if (compare_next_interesting_functions(cur_node, raw_data->decl_str, raw_data->context, raw_data->num))
 			return cur_node;
 	}
 	return NULL;
 }
 
-next_interesting_function_t get_global_next_interesting_function_entry_with_hash(const_tree decl, const char *decl_name, unsigned int num, enum size_overflow_mark marked)
+next_interesting_function_t get_global_next_interesting_function_entry_with_hash(struct fn_raw_data *raw_data)
 {
-	const char *context;
-	unsigned int hash;
-
-	hash = get_decl_hash(decl, decl_name);
-	if (hash == NO_HASH)
+	raw_data->hash = get_decl_hash(raw_data->decl, raw_data->decl_str);
+	if (raw_data->hash == NO_HASH)
 		return NULL;
 
-	context = get_decl_context(decl);
-	return get_global_next_interesting_function_entry(decl_name, context, hash, num, marked);
+	raw_data->context = get_decl_context(raw_data->decl);
+	if (!raw_data->context)
+		return NULL;
+	return get_global_next_interesting_function_entry(raw_data);
 }
 
-next_interesting_function_t create_new_next_interesting_entry(const char *decl_name, const char *context, unsigned int hash, unsigned int num, enum size_overflow_mark marked, next_interesting_function_t orig_next_node)
+next_interesting_function_t create_new_next_interesting_entry(struct fn_raw_data *raw_data, next_interesting_function_t orig_next_node)
 {
 	next_interesting_function_t new_node;
 
 	new_node = (next_interesting_function_t)xmalloc(sizeof(*new_node));
-	new_node->decl_name = xstrdup(decl_name);
-	gcc_assert(context);
-	new_node->context = xstrdup(context);
-	new_node->hash = hash;
-	new_node->num = num;
+	new_node->decl_name = xstrdup(raw_data->decl_str);
+	gcc_assert(raw_data->context);
+	new_node->context = xstrdup(raw_data->context);
+	new_node->hash = raw_data->hash;
+	new_node->num = raw_data->num;
 	new_node->next = NULL;
 	new_node->children = NULL;
-	new_node->marked = marked;
+	new_node->marked = raw_data->marked;
 	new_node->orig_next_node = orig_next_node;
 	return new_node;
 }
 
 // Create the main data structure
-next_interesting_function_t create_new_next_interesting_decl(tree decl, const char *decl_name, unsigned int num, enum size_overflow_mark marked, next_interesting_function_t orig_next_node)
+next_interesting_function_t create_new_next_interesting_decl(struct fn_raw_data *raw_data, next_interesting_function_t orig_next_node)
 {
-	unsigned int hash;
-	const char *context;
-	enum tree_code decl_code = TREE_CODE(decl);
+	enum tree_code decl_code = TREE_CODE(raw_data->decl);
 
 	gcc_assert(decl_code == FIELD_DECL || decl_code == FUNCTION_DECL || decl_code == VAR_DECL);
 
-	if (is_vararg(decl, num))
+	if (is_vararg(raw_data->decl, raw_data->num))
 		return NULL;
 
-	hash = get_decl_hash(decl, decl_name);
-	if (hash == NO_HASH)
+	raw_data->hash = get_decl_hash(raw_data->decl, raw_data->decl_str);
+	if (raw_data->hash == NO_HASH)
 		return NULL;
 
-	gcc_assert(num <= MAX_PARAM);
+	gcc_assert(raw_data->num <= MAX_PARAM);
 	// Clones must have an orig_next_node
-	gcc_assert(!made_by_compiler(decl) || orig_next_node);
+	gcc_assert(!made_by_compiler(raw_data->decl) || orig_next_node);
 
-	context = get_decl_context(decl);
-	return create_new_next_interesting_entry(decl_name, context, hash, num, marked, orig_next_node);
+	raw_data->context = get_decl_context(raw_data->decl);
+	if (!raw_data->context)
+		return NULL;
+	return create_new_next_interesting_entry(raw_data, orig_next_node);
 }
 
 void add_to_global_next_interesting_function(next_interesting_function_t new_entry)
@@ -154,6 +151,7 @@ void add_to_global_next_interesting_function(next_interesting_function_t new_ent
 	for (cur_global = cur_global_head; cur_global; cur_global = cur_global->next) {
 		if (!cur_global->next)
 			cur_global_end = cur_global;
+
 		if (compare_next_interesting_functions(cur_global, new_entry->decl_name, new_entry->context, new_entry->num))
 			return;
 	}
@@ -165,32 +163,32 @@ void add_to_global_next_interesting_function(next_interesting_function_t new_ent
 /* If the interesting function is a clone then find or create its original next_interesting_function_t node
  * and add it to global_next_interesting_function
  */
-static next_interesting_function_t create_orig_next_node_for_a_clone(const_tree clone_fndecl, unsigned int num, enum size_overflow_mark marked)
+static next_interesting_function_t create_orig_next_node_for_a_clone(struct fn_raw_data *clone_raw_data)
 {
+	struct fn_raw_data orig_raw_data;
 	next_interesting_function_t orig_next_node;
-	tree decl;
-	unsigned int orig_num;
 	enum tree_code decl_code;
-	const char *decl_name;
 
-	decl = get_orig_fndecl(clone_fndecl);
-	decl_code = TREE_CODE(decl);
+	orig_raw_data.decl = get_orig_fndecl(clone_raw_data->decl);
+	decl_code = TREE_CODE(orig_raw_data.decl);
 
 	if (decl_code == FIELD_DECL || decl_code == VAR_DECL)
-		orig_num = num;
+		orig_raw_data.num = clone_raw_data->num;
 	else
-		orig_num = get_correct_argnum(clone_fndecl, decl, num);
+		orig_raw_data.num = get_correct_argnum(clone_raw_data->decl, orig_raw_data.decl, clone_raw_data->num);
 
 	// Skip over ISRA.162 parm decls
-	if (orig_num == CANNOT_FIND_ARG)
+	if (orig_raw_data.num == CANNOT_FIND_ARG)
 		return NULL;
 
-	decl_name = get_orig_decl_name(decl);
-	orig_next_node = get_global_next_interesting_function_entry_with_hash(decl, decl_name, orig_num, NO_SO_MARK);
+	orig_raw_data.decl_str = get_orig_decl_name(orig_raw_data.decl);
+	orig_raw_data.marked = NO_SO_MARK;
+	orig_next_node = get_global_next_interesting_function_entry_with_hash(&orig_raw_data);
 	if (orig_next_node)
 		return orig_next_node;
 
-	orig_next_node = create_new_next_interesting_decl(decl, decl_name, orig_num, marked, NULL);
+	orig_raw_data.marked = clone_raw_data->marked;
+	orig_next_node = create_new_next_interesting_decl(&orig_raw_data, NULL);
 	gcc_assert(orig_next_node);
 
 	add_to_global_next_interesting_function(orig_next_node);
@@ -198,42 +196,48 @@ static next_interesting_function_t create_orig_next_node_for_a_clone(const_tree 
 }
 
 // Find or create the next_interesting_function_t node for decl and num
-next_interesting_function_t get_and_create_next_node_from_global_next_nodes(tree decl, unsigned int num, enum size_overflow_mark marked, next_interesting_function_t orig_next_node)
+next_interesting_function_t get_and_create_next_node_from_global_next_nodes(struct fn_raw_data *raw_data, next_interesting_function_t orig_next_node)
 {
 	next_interesting_function_t cur_next_cnode;
-	const char *decl_name = DECL_NAME_POINTER(decl);
 
-	cur_next_cnode = get_global_next_interesting_function_entry_with_hash(decl, decl_name, num, marked);
+	raw_data->decl_str = DECL_NAME_POINTER(raw_data->decl);
+
+	cur_next_cnode = get_global_next_interesting_function_entry_with_hash(raw_data);
 	if (cur_next_cnode)
 		goto out;
 
-	if (!orig_next_node && made_by_compiler(decl)) {
-		orig_next_node = create_orig_next_node_for_a_clone(decl, num, marked);
+	if (!orig_next_node && made_by_compiler(raw_data->decl)) {
+		orig_next_node = create_orig_next_node_for_a_clone(raw_data);
 		if (!orig_next_node)
 			return NULL;
 	}
 
-	cur_next_cnode = create_new_next_interesting_decl(decl, decl_name, num, marked, orig_next_node);
+	cur_next_cnode = create_new_next_interesting_decl(raw_data, orig_next_node);
 	if (!cur_next_cnode)
 		return NULL;
 
 	add_to_global_next_interesting_function(cur_next_cnode);
 out:
-	if (cur_next_cnode->marked != marked && cur_next_cnode->marked == YES_SO_MARK)
+	if (cur_next_cnode->marked != raw_data->marked && cur_next_cnode->marked != NO_SO_MARK)
 		return cur_next_cnode;
-	gcc_assert(cur_next_cnode->marked == marked);
+
+	if (raw_data->marked != NO_SO_MARK && cur_next_cnode->marked == NO_SO_MARK)
+		cur_next_cnode->marked = raw_data->marked;
+
 	return cur_next_cnode;
 }
 
-static bool has_next_interesting_function_chain_node(next_interesting_function_t next_cnodes_head, const_tree decl, unsigned int num)
+static bool has_next_interesting_function_chain_node(next_interesting_function_t next_cnodes_head, struct fn_raw_data *raw_data)
 {
 	next_interesting_function_t cur_node;
-	const char *context, *decl_name;
 
-	decl_name = DECL_NAME_POINTER(decl);
-	context = get_decl_context(decl);
+	raw_data->decl_str = DECL_NAME_POINTER(raw_data->decl);
+	raw_data->context = get_decl_context(raw_data->decl);
+	if (!raw_data->context)
+		return true;
+
 	for (cur_node = next_cnodes_head; cur_node; cur_node = cur_node->next) {
-		if (compare_next_interesting_functions(cur_node, decl_name, context, num))
+		if (compare_next_interesting_functions(cur_node, raw_data->decl_str, raw_data->context, raw_data->num))
 			return true;
 	}
 	return false;
@@ -241,7 +245,7 @@ static bool has_next_interesting_function_chain_node(next_interesting_function_t
 
 static next_interesting_function_t handle_function(next_interesting_function_t next_cnodes_head, tree fndecl, const_tree arg)
 {
-	unsigned int num;
+	struct fn_raw_data raw_data;
 	next_interesting_function_t orig_next_node, new_node;
 
 	gcc_assert(fndecl != NULL_TREE);
@@ -250,24 +254,29 @@ static next_interesting_function_t handle_function(next_interesting_function_t n
 	if (DECL_BUILT_IN(fndecl))
 		return next_cnodes_head;
 
+	raw_data.decl = fndecl;
+	raw_data.decl_str = DECL_NAME_POINTER(fndecl);
+	raw_data.marked = NO_SO_MARK;
+
 	// convert arg into its position
 	if (arg == NULL_TREE)
-		num = 0;
+		raw_data.num = 0;
 	else
-		num = find_arg_number_tree(arg, fndecl);
-	if (num == CANNOT_FIND_ARG)
+		raw_data.num = find_arg_number_tree(arg, raw_data.decl);
+	if (raw_data.num == CANNOT_FIND_ARG)
 		return next_cnodes_head;
 
-	if (has_next_interesting_function_chain_node(next_cnodes_head, fndecl, num))
+	if (has_next_interesting_function_chain_node(next_cnodes_head, &raw_data))
 		return next_cnodes_head;
 
-	if (made_by_compiler(fndecl)) {
-		orig_next_node = create_orig_next_node_for_a_clone(fndecl, num, NO_SO_MARK);
+	if (made_by_compiler(raw_data.decl)) {
+		orig_next_node = create_orig_next_node_for_a_clone(&raw_data);
 		if (!orig_next_node)
 			return next_cnodes_head;
 	} else
 		orig_next_node = NULL;
-	new_node = create_new_next_interesting_decl(fndecl, DECL_NAME_POINTER(fndecl), num, NO_SO_MARK, orig_next_node);
+
+	new_node = create_new_next_interesting_decl(&raw_data, orig_next_node);
 	if (!new_node)
 		return next_cnodes_head;
 	new_node->next = next_cnodes_head;
@@ -419,11 +428,17 @@ static void collect_data_for_execute(next_interesting_function_t parent, next_in
 	gcc_assert(parent);
 
 	while (cur) {
+		struct fn_raw_data child_raw_data;
 		next_interesting_function_t next, child;
 
 		next = cur->next;
 
-		child = get_global_next_interesting_function_entry(cur->decl_name, cur->context, cur->hash, cur->num, NO_SO_MARK);
+		child_raw_data.decl_str = cur->decl_name;
+		child_raw_data.context = cur->context;
+		child_raw_data.hash = cur->hash;
+		child_raw_data.num = cur->num;
+		child_raw_data.marked = NO_SO_MARK;
+		child = get_global_next_interesting_function_entry(&child_raw_data);
 		if (!child) {
 			add_to_global_next_interesting_function(cur);
 			child = cur;
@@ -439,26 +454,32 @@ static void collect_data_for_execute(next_interesting_function_t parent, next_in
 	check_local_variables(parent);
 }
 
-next_interesting_function_t __attribute__((weak)) get_and_create_next_node_from_global_next_nodes_fnptr(const_tree fn_ptr __unused, unsigned int num __unused, enum size_overflow_mark marked __unused)
+next_interesting_function_t __attribute__((weak)) get_and_create_next_node_from_global_next_nodes_fnptr(const_tree fn_ptr __unused, struct fn_raw_data *raw_data __unused)
 {
 	return NULL;
 }
 
 static next_interesting_function_t create_parent_next_cnode(const_gimple stmt, unsigned int num)
 {
+	struct fn_raw_data raw_data;
+
+	raw_data.num = num;
+	raw_data.marked = NO_SO_MARK;
+
 	switch (gimple_code(stmt)) {
 	case GIMPLE_ASM:
-		return get_and_create_next_node_from_global_next_nodes(current_function_decl, num, ASM_STMT_SO_MARK, NULL);
-	case GIMPLE_CALL: {
-		tree decl = gimple_call_fndecl(stmt);
-
-		if (decl != NULL_TREE)
-			return get_and_create_next_node_from_global_next_nodes(decl, num, NO_SO_MARK, NULL);
-		decl = gimple_call_fn(stmt);
-		return get_and_create_next_node_from_global_next_nodes_fnptr(decl, num, NO_SO_MARK);
-	}
+		raw_data.decl = current_function_decl;
+		raw_data.marked = ASM_STMT_SO_MARK;
+		return get_and_create_next_node_from_global_next_nodes(&raw_data, NULL);
+	case GIMPLE_CALL:
+		raw_data.decl = gimple_call_fndecl(stmt);
+		if (raw_data.decl != NULL_TREE)
+			return get_and_create_next_node_from_global_next_nodes(&raw_data, NULL);
+		raw_data.decl = gimple_call_fn(stmt);
+		return get_and_create_next_node_from_global_next_nodes_fnptr(raw_data.decl, &raw_data);
 	case GIMPLE_RETURN:
-		return get_and_create_next_node_from_global_next_nodes(current_function_decl, num, NO_SO_MARK, NULL);
+		raw_data.decl = current_function_decl;
+		return get_and_create_next_node_from_global_next_nodes(&raw_data, NULL);
 	default:
 		debug_gimple_stmt((gimple)stmt);
 		gcc_unreachable();
@@ -574,27 +595,33 @@ static void size_overflow_function_insertion_hook(struct cgraph_node *node __unu
 static void size_overflow_node_duplication_hook(struct cgraph_node *src, struct cgraph_node *dst, void *data __unused)
 {
 	next_interesting_function_t head, cur;
-	const_tree decl;
-	const char *src_name, *src_context;
+	struct fn_raw_data src_raw_data;
 
-	decl = NODE_DECL(src);
-	src_name = DECL_NAME_POINTER(decl);
-	src_context = get_decl_context(decl);
+	src_raw_data.decl = NODE_DECL(src);
+	src_raw_data.decl_str = DECL_NAME_POINTER(src_raw_data.decl);
+	src_raw_data.context = get_decl_context(src_raw_data.decl);
+	if (!src_raw_data.context)
+		return;
 
-	head = get_global_next_interesting_function_entry_with_hash(decl, src_name, NONE_ARGNUM, NO_SO_MARK);
+	src_raw_data.num = NONE_ARGNUM;
+	src_raw_data.marked = NO_SO_MARK;
+
+	head = get_global_next_interesting_function_entry_with_hash(&src_raw_data);
 	if (!head)
 		return;
 
 	for (cur = head; cur; cur = cur->next) {
-		unsigned int new_argnum;
+		struct fn_raw_data dst_raw_data;
 		next_interesting_function_t orig_next_node, next_node;
-		bool dst_clone;
 
-		if (!compare_next_interesting_functions(cur, src_name, src_context, CANNOT_FIND_ARG))
+		if (!compare_next_interesting_functions(cur, src_raw_data.decl_str, src_raw_data.context, src_raw_data.num))
 			continue;
 
-		dst_clone = made_by_compiler(NODE_DECL(dst));
-		if (!dst_clone)
+		dst_raw_data.decl = NODE_DECL(dst);
+		dst_raw_data.decl_str = cgraph_node_name(dst);
+		dst_raw_data.marked = cur->marked;
+
+		if (!made_by_compiler(dst_raw_data.decl))
 			break;
 
 		// For clones use the original node instead
@@ -603,11 +630,11 @@ static void size_overflow_node_duplication_hook(struct cgraph_node *src, struct 
 		else
 			orig_next_node = cur;
 
-		new_argnum = get_correct_argnum_fndecl(NODE_DECL(src), NODE_DECL(dst), cur->num);
-		if (new_argnum == CANNOT_FIND_ARG)
+		dst_raw_data.num = get_correct_argnum_fndecl(src_raw_data.decl, dst_raw_data.decl, cur->num);
+		if (dst_raw_data.num == CANNOT_FIND_ARG)
 			continue;
 
-		next_node = create_new_next_interesting_decl(NODE_DECL(dst), cgraph_node_name(dst), new_argnum, cur->marked, orig_next_node);
+		next_node = create_new_next_interesting_decl(&dst_raw_data, orig_next_node);
 		if (next_node)
 			add_to_global_next_interesting_function(next_node);
 	}
@@ -679,7 +706,7 @@ static next_interesting_function_t get_same_not_ret_child(next_interesting_funct
    fnptr 0 && fn 0 && (fn 0 -> fn 2) => fnptr 2 */
 static void search_missing_fptr_arg(next_interesting_function_t parent)
 {
-	next_interesting_function_t tracked_fn, cur_next_node, child;
+	next_interesting_function_t child;
 	unsigned int i;
 #if BUILDING_GCC_VERSION <= 4007
 	VEC(next_interesting_function_t, heap) *new_children = NULL;
@@ -702,6 +729,8 @@ static void search_missing_fptr_arg(next_interesting_function_t parent)
 #else
 	FOR_EACH_VEC_SAFE_ELT(parent->children, i, child) {
 #endif
+		next_interesting_function_t cur_next_node, tracked_fn;
+
 		if (child->num != 0)
 			continue;
 		// (fn 0 -> fn 2)
@@ -713,8 +742,10 @@ static void search_missing_fptr_arg(next_interesting_function_t parent)
 		for (cur_next_node = global_next_interesting_function[parent->hash]; cur_next_node; cur_next_node = cur_next_node->next) {
 			if (cur_next_node->num != tracked_fn->num)
 				continue;
+
 			if (strcmp(parent->decl_name, cur_next_node->decl_name))
 				continue;
+
 			if (!has_next_interesting_function_vec(parent, cur_next_node)) {
 #if BUILDING_GCC_VERSION <= 4007
 				VEC_safe_push(next_interesting_function_t, heap, new_children, cur_next_node);
