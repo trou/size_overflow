@@ -38,9 +38,7 @@ struct cgraph_node *get_cnode(const_tree fndecl)
 
 static bool compare_next_interesting_functions(next_interesting_function_t cur_node, const char *decl_name, const char *context, unsigned int num)
 {
-	if (cur_node->marked == ASM_STMT_SO_MARK)
-		return false;
-	if (num != CANNOT_FIND_ARG && cur_node->num != num)
+	if (num != NONE_ARGNUM && cur_node->num != num)
 		return false;
 	if (strcmp(cur_node->context, context))
 		return false;
@@ -60,8 +58,9 @@ static const char* get_decl_context(const_tree decl)
 	gcc_assert(TREE_CODE(decl) == FIELD_DECL);
 	context = get_type_name_from_field(decl);
 
+/* TODO: Ignore anonymous types for now
 	if (!context)
-		return "fielddecl";
+		return "fielddecl"; */
 	return context;
 }
 
@@ -714,29 +713,73 @@ void size_overflow_register_hooks(void)
 
 static void set_yes_so_mark(next_interesting_function_t next_node)
 {
-	next_node->marked = YES_SO_MARK;
+	if (next_node->marked == NO_SO_MARK)
+		next_node->marked = YES_SO_MARK;
 	// Mark the orig decl as well if it's a clone
-	if (next_node->orig_next_node)
+	if (next_node->orig_next_node && next_node->orig_next_node->marked == NO_SO_MARK)
 		next_node->orig_next_node->marked = YES_SO_MARK;
 }
 
-// Determine if the function is already in the hash table
-static bool is_marked_fn(next_interesting_function_t next_node)
+// Determine whether node or orig node is part of a tracked data flow
+static bool marked_fn(next_interesting_function_t next_node)
 {
-	const struct size_overflow_hash *entry;
+	bool is_marked_fn, is_marked_orig = false;
 
-	if (next_node->marked != NO_SO_MARK)
-		return true;
+	is_marked_fn = next_node->marked != NO_SO_MARK;
 
 	if (next_node->orig_next_node)
-		entry = get_size_overflow_hash_entry(next_node->orig_next_node->hash, next_node->orig_next_node->decl_name, next_node->orig_next_node->num);
-	else
-		entry = get_size_overflow_hash_entry(next_node->hash, next_node->decl_name, next_node->num);
-	if (!entry)
-		return false;
+		is_marked_orig = next_node->orig_next_node->marked != NO_SO_MARK;
 
-	set_yes_so_mark(next_node);
-	return true;
+	return is_marked_fn || is_marked_orig;
+}
+
+// Determine whether node or orig node is in the hash table already
+static bool already_in_the_hashtable(next_interesting_function_t next_node)
+{
+	if (next_node->orig_next_node)
+		next_node = next_node->orig_next_node;
+	return get_size_overflow_hash_entry(next_node->hash, next_node->decl_name, next_node->num) != NULL;
+}
+
+// Propagate the size_overflow marks up the use-def chains
+static bool has_marked_child(next_interesting_function_t next_node)
+{
+	bool ret = false;
+	unsigned int i;
+	next_interesting_function_t child;
+
+#if BUILDING_GCC_VERSION <= 4007
+	if (VEC_empty(next_interesting_function_t, next_node->children))
+		return false;
+	FOR_EACH_VEC_ELT(next_interesting_function_t, next_node->children, i, child) {
+#else
+	FOR_EACH_VEC_SAFE_ELT(next_node->children, i, child) {
+#endif
+		if (!marked_fn(child) && !already_in_the_hashtable(child))
+			continue;
+
+		set_yes_so_mark(child);
+		ret = true;
+	}
+
+	return ret;
+}
+
+/* Set YES_SO_MARK on the function, its orig node and children if:
+ *      * the function or its orig node or one of its children is in the hash table already
+ *      * the function's orig node is marked with YES_SO_MARK or ASM_STMT_SO_MARK
+ *      * one of the children is marked with YES_SO_MARK or ASM_STMT_SO_MARK
+ */
+static void set_fn_mark(next_interesting_function_t next_node)
+{
+	bool so_fn, so_hashtable, so_child;
+
+	so_hashtable = already_in_the_hashtable(next_node);
+	so_fn = marked_fn(next_node);
+	so_child = has_marked_child(next_node);
+
+	if (so_fn || so_hashtable || so_child)
+		set_yes_so_mark(next_node);
 }
 
 // Determine if any of the function pointer targets have data flow between the return value and one of the arguments
@@ -828,6 +871,29 @@ static void search_missing_fptr_arg(next_interesting_function_t parent)
 #endif
 }
 
+static void set_so_mark(next_interesting_function_set *visited, next_interesting_function_t parent)
+{
+	unsigned int i;
+	next_interesting_function_t child;
+
+	gcc_assert(parent);
+	set_fn_mark(parent);
+
+#if BUILDING_GCC_VERSION <= 4007
+	if (VEC_empty(next_interesting_function_t, parent->children))
+		return;
+	FOR_EACH_VEC_ELT(next_interesting_function_t, parent->children, i, child) {
+#else
+	FOR_EACH_VEC_SAFE_ELT(parent->children, i, child) {
+#endif
+		if (parent->marked != NO_SO_MARK)
+			set_yes_so_mark(child);
+		set_fn_mark(child);
+		if (!pointer_set_insert(visited, child))
+			set_so_mark(visited, child);
+	}
+}
+
 // Do a depth-first recursive dump of the next_interesting_function_t children vector
 static void print_missing_functions(next_interesting_function_set *visited, next_interesting_function_t parent)
 {
@@ -835,8 +901,7 @@ static void print_missing_functions(next_interesting_function_set *visited, next
 	next_interesting_function_t child;
 
 	gcc_assert(parent);
-	check_global_variables(parent);
-	search_missing_fptr_arg(parent);
+	gcc_assert(parent->marked != NO_SO_MARK);
 	print_missing_function(parent);
 
 #if BUILDING_GCC_VERSION <= 4007
@@ -846,8 +911,7 @@ static void print_missing_functions(next_interesting_function_set *visited, next
 #else
 	FOR_EACH_VEC_SAFE_ELT(parent->children, i, child) {
 #endif
-		// Since the parent is a marked function we will set YES_SO_MARK on the children to transform them as well
-		child->marked = YES_SO_MARK;
+		gcc_assert(child->marked != NO_SO_MARK);
 		if (!pointer_set_insert(visited, child))
 			print_missing_functions(visited, child);
 	}
@@ -862,21 +926,38 @@ static unsigned int size_overflow_execute(void)
 	next_interesting_function_set *visited;
 	next_interesting_function_t cur_global;
 
-	visited = next_interesting_function_pointer_set_create();
-
+	// Collect vardecls and funtions reachable by function pointers
 	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
 		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
-			if (is_marked_fn(cur_global))
-				print_missing_functions(visited, cur_global);
+			check_global_variables(cur_global);
+			search_missing_fptr_arg(cur_global);
 		}
 	}
 
+	// Set YES_SO_MARK on functions that will be emitted into the hash table
+	visited = next_interesting_function_pointer_set_create();
+	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
+		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
+			if (cur_global->marked == ASM_STMT_SO_MARK)
+				set_so_mark(visited, cur_global);
+		}
+	}
 	pointer_set_destroy(visited);
 
-/*	if (in_lto_p) {
+	// Print functions missing from the hash table
+	visited = next_interesting_function_pointer_set_create();
+	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
+		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
+			if (cur_global->marked == ASM_STMT_SO_MARK)
+				print_missing_functions(visited, cur_global);
+		}
+	}
+	pointer_set_destroy(visited);
+
+	if (in_lto_p) {
 		fprintf(stderr, "%s: SIZE_OVERFLOW EXECUTE\n", __func__);
 		print_global_next_interesting_functions();
-	}*/
+	}
 
 	return 0;
 }
