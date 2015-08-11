@@ -40,6 +40,41 @@ bool is_vararg(const_tree fn, unsigned int num)
 	return num >= (unsigned int)list_length(arg_list);
 }
 
+// Extract the field decl from memory references
+tree get_ref_field(const_tree ref)
+{
+	tree field;
+
+	// TODO: handle nested memory references
+	switch (TREE_CODE(ref)) {
+	case ARRAY_REF:
+		return NULL_TREE;
+#if BUILDING_GCC_VERSION >= 4006
+	case MEM_REF:
+#endif
+	case INDIRECT_REF:
+		field = TREE_OPERAND(ref, 0);
+		break;
+	case COMPONENT_REF:
+		field = TREE_OPERAND(ref, 1);
+		break;
+	default:
+		return NULL_TREE;
+	}
+
+	// TODO
+	if (TREE_CODE(field) == SSA_NAME)
+		return NULL_TREE;
+	// TODO
+	if (TREE_CODE(field) != FIELD_DECL)
+		return NULL_TREE;
+	// TODO
+	if (TREE_CODE(field) == ADDR_EXPR)
+		return NULL_TREE;
+
+	return field;
+}
+
 const char *get_type_name_from_field(const_tree field_decl)
 {
 	const_tree context, type_name;
@@ -48,6 +83,9 @@ const char *get_type_name_from_field(const_tree field_decl)
 		return NULL;
 
 	context = DECL_CONTEXT(field_decl);
+	// TODO
+	if (TREE_CODE(context) != RECORD_TYPE)
+		return NULL;
 	gcc_assert(TREE_CODE(context) == RECORD_TYPE);
 	type_name = TYPE_NAME(TYPE_MAIN_VARIANT(context));
 	if (type_name == NULL_TREE)
@@ -66,14 +104,16 @@ const char *get_type_name_from_field(const_tree field_decl)
 // Was the function created by the compiler itself?
 bool made_by_compiler(const_tree decl)
 {
+	enum tree_code decl_code;
 	struct cgraph_node *node;
 
 	if (FUNCTION_PTR_P(decl))
 		return false;
-	if (TREE_CODE(decl) == VAR_DECL)
+	decl_code = TREE_CODE(decl);
+	if (decl_code == VAR_DECL || decl_code == FIELD_DECL)
 		return false;
 
-	gcc_assert(TREE_CODE(decl) == FUNCTION_DECL);
+	gcc_assert(decl_code == FUNCTION_DECL);
 	if (DECL_ABSTRACT_ORIGIN(decl) != NULL_TREE)
 		return true;
 	if (DECL_ARTIFICIAL(decl))

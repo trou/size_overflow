@@ -315,21 +315,64 @@ next_interesting_function_t __attribute__((weak)) handle_function_ptr_ret(gimple
 	return next_cnodes_head;
 }
 
+static next_interesting_function_t handle_struct_fields(next_interesting_function_t head, const_tree node)
+{
+	struct fn_raw_data raw_data;
+	next_interesting_function_t new_node;
+
+	switch (TREE_CODE(node)) {
+	case ARRAY_REF:
+#if BUILDING_GCC_VERSION >= 4006
+	case MEM_REF:
+#endif
+	case INDIRECT_REF:
+	case COMPONENT_REF:
+		raw_data.decl = get_ref_field(node);
+		break;
+	// TODO
+	case BIT_FIELD_REF:
+	case VIEW_CONVERT_EXPR:
+		return head;
+	default:
+		// XXX: keep this syncronized with size_overflow_transform.c:search_interesting_structs()
+		debug_tree((tree)node);
+		gcc_unreachable();
+	}
+
+	if (raw_data.decl == NULL_TREE)
+		return head;
+
+	raw_data.decl_str = DECL_NAME_POINTER(raw_data.decl);
+	raw_data.num = 0;
+	raw_data.marked = NO_SO_MARK;
+
+	new_node = create_new_next_interesting_decl(&raw_data, NULL);
+	if (!new_node)
+		return head;
+	new_node->next = head;
+	return new_node;
+}
+
 /* Find all functions that influence lhs
  *
  * Encountered functions are added to the children vector (next_interesting_function_t).
  */
 static next_interesting_function_t walk_use_def_next_functions(gimple_set *visited, next_interesting_function_t next_cnodes_head, const_tree lhs)
 {
+	enum tree_code code;
 	const_gimple def_stmt;
 
 	if (skip_types(lhs))
 		return next_cnodes_head;
 
-	if (TREE_CODE(lhs) == PARM_DECL)
+	code = TREE_CODE(lhs);
+	if (code == PARM_DECL)
 		return handle_function(next_cnodes_head, current_function_decl, lhs);
 
-	if (TREE_CODE(lhs) != SSA_NAME)
+	if (TREE_CODE_CLASS(code) == tcc_reference)
+		return handle_struct_fields(next_cnodes_head, lhs);
+
+	if (code != SSA_NAME)
 		return next_cnodes_head;
 
 	def_stmt = get_def_stmt(lhs);
@@ -480,6 +523,11 @@ static next_interesting_function_t create_parent_next_cnode(const_gimple stmt, u
 	case GIMPLE_RETURN:
 		raw_data.decl = current_function_decl;
 		return get_and_create_next_node_from_global_next_nodes(&raw_data, NULL);
+	case GIMPLE_ASSIGN:
+		raw_data.decl = get_ref_field(gimple_assign_lhs(stmt));
+		if (raw_data.decl == NULL_TREE)
+			return NULL;
+		return get_and_create_next_node_from_global_next_nodes(&raw_data, NULL);
 	default:
 		debug_gimple_stmt((gimple)stmt);
 		gcc_unreachable();
@@ -487,36 +535,19 @@ static next_interesting_function_t create_parent_next_cnode(const_gimple stmt, u
 }
 
 // Handle potential next_interesting_function_t parent if its argument has an integer type
-static void collect_all_possible_size_overflow_fns(const_gimple stmt, unsigned int num)
+static void collect_all_possible_size_overflow_fns(const_gimple stmt, const_tree start_var, unsigned int num)
 {
-	const_tree start_var;
 	next_interesting_function_t children_next_cnode, parent_next_cnode;
 
-	switch (gimple_code(stmt)) {
-	case GIMPLE_ASM:
-		if (!is_size_overflow_insert_check_asm(as_a_const_gasm(stmt)))
-			return;
-		start_var = get_size_overflow_asm_input(as_a_const_gasm(stmt));
-		gcc_assert(start_var != NULL_TREE);
-		break;
-	case GIMPLE_CALL:
-		start_var = gimple_call_arg(stmt, num - 1);
-		break;
-	case GIMPLE_RETURN:
-		start_var = gimple_return_retval(as_a_const_greturn(stmt));
-		if (start_var == NULL_TREE)
-			return;
-		break;
-	default:
-		debug_gimple_stmt((gimple)stmt);
-		gcc_unreachable();
-	}
+	// skip void return values
+	if (start_var == NULL_TREE)
+		return;
 
 	if (skip_types(start_var))
 		return;
 
 	// handle intentional MARK_TURN_OFF
-	if (check_intentional_asm(stmt, num) == MARK_TURN_OFF)
+	if (check_intentional_size_overflow_asm_and_attribute(start_var) == MARK_TURN_OFF)
 		return;
 
 	parent_next_cnode = create_parent_next_cnode(stmt, num);
@@ -539,23 +570,52 @@ static void handle_cgraph_node(struct cgraph_node *node)
 		gimple_stmt_iterator gsi;
 
 		for (gsi = gsi_start_bb(bb); !gsi_end_p(gsi); gsi_next(&gsi)) {
+			tree start_var;
 			gimple stmt = gsi_stmt(gsi);
 
 			switch (gimple_code(stmt)) {
-			case GIMPLE_RETURN:
-			case GIMPLE_ASM:
-				collect_all_possible_size_overflow_fns(stmt, 0);
+			case GIMPLE_RETURN: {
+				const greturn *return_stmt = as_a_const_greturn(stmt);
+
+				start_var = gimple_return_retval(return_stmt);
+				collect_all_possible_size_overflow_fns(return_stmt, start_var, 0);
 				break;
+			}
+			case GIMPLE_ASM: {
+				const gasm *asm_stmt = as_a_const_gasm(stmt);
+
+				if (!is_size_overflow_insert_check_asm(asm_stmt))
+					break;
+				start_var = get_size_overflow_asm_input(asm_stmt);
+				collect_all_possible_size_overflow_fns(asm_stmt, start_var, 0);
+				break;
+			}
 			case GIMPLE_CALL: {
 				unsigned int i, len;
-				tree fndecl = gimple_call_fndecl(stmt);
+				const gcall *call = as_a_const_gcall(stmt);
+				tree fndecl = gimple_call_fndecl(call);
 
 				if (fndecl != NULL_TREE && DECL_BUILT_IN(fndecl))
 					break;
 
-				len = gimple_call_num_args(stmt);
-				for (i = 0; i < len; i++)
-					collect_all_possible_size_overflow_fns(stmt, i + 1);
+				len = gimple_call_num_args(call);
+				for (i = 0; i < len; i++) {
+					start_var = gimple_call_arg(call, i);
+					collect_all_possible_size_overflow_fns(call, start_var, i + 1);
+				}
+				break;
+			}
+			case GIMPLE_ASSIGN: {
+				const gassign *assign = as_a_const_gassign(stmt);
+
+				start_var = gimple_assign_rhs1(assign);
+				collect_all_possible_size_overflow_fns(assign, start_var, 0);
+				start_var = gimple_assign_rhs2(assign);
+				collect_all_possible_size_overflow_fns(assign, start_var, 0);
+#if BUILDING_GCC_VERSION >= 4006
+				start_var = gimple_assign_rhs3(assign);
+				collect_all_possible_size_overflow_fns(assign, start_var, 0);
+#endif
 				break;
 			}
 			default:

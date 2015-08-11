@@ -325,7 +325,7 @@ static enum intentional_mark walk_use_def(gimple_set *visited, const_tree lhs)
 	}
 }
 
-static enum intentional_mark check_intentional_size_overflow_asm_and_attribute(const_tree var)
+enum intentional_mark check_intentional_size_overflow_asm_and_attribute(const_tree var)
 {
 	enum intentional_mark mark;
 	gimple_set *visited;
@@ -423,33 +423,6 @@ enum intentional_mark check_intentional_attribute(const_gimple stmt, unsigned in
 	print_intentional_mark(caller_mark);
 	print_intentional_mark(callee_mark);
 	gcc_unreachable();
-}
-
-enum intentional_mark check_intentional_asm(const_gimple stmt, unsigned int argnum)
-{
-	const_tree arg;
-
-	switch (gimple_code(stmt)) {
-	case GIMPLE_RETURN:
-		gcc_assert(argnum == 0);
-		arg = gimple_return_retval(as_a_const_greturn(stmt));
-		break;
-	case GIMPLE_CALL:
-		gcc_assert(argnum != 0);
-		gcc_assert(argnum <= gimple_call_num_args(stmt));
-		arg = gimple_call_arg(stmt, argnum - 1);
-		break;
-	case GIMPLE_ASM:
-		gcc_assert(is_size_overflow_insert_check_asm(as_a_const_gasm(stmt)));
-		arg = get_size_overflow_asm_input(as_a_const_gasm(stmt));
-		break;
-	default:
-		debug_gimple_stmt((gimple)stmt);
-		gcc_unreachable();
-	}
-
-	// find a defining marked caller argument or struct field for arg
-	return check_intentional_size_overflow_asm_and_attribute(arg);
 }
 
 bool is_a_cast_and_const_overflow(const_tree no_const_rhs)

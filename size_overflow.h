@@ -178,7 +178,7 @@ extern const struct size_overflow_hash *get_size_overflow_hash_entry(unsigned in
 
 // intentional_overflow.c
 extern tree get_size_overflow_asm_input(const gasm *stmt);
-extern enum intentional_mark check_intentional_asm(const_gimple stmt, unsigned int argnum);
+extern enum intentional_mark check_intentional_size_overflow_asm_and_attribute(const_tree var);
 extern bool is_size_overflow_insert_check_asm(const gasm *stmt);
 extern enum intentional_mark check_intentional_attribute(const_gimple stmt, unsigned int argnum);
 extern enum intentional_mark get_so_asm_type(const_gimple stmt);
@@ -204,6 +204,7 @@ extern bool search_interesting_args(tree fndecl, bool *argnums);
 
 // misc.c
 extern bool is_vararg(const_tree fn, unsigned int num);
+extern tree get_ref_field(const_tree ref);
 extern unsigned int get_correct_argnum_fndecl(const_tree fndecl, const_tree correct_argnum_of_fndecl, unsigned int num);
 extern const char *get_type_name_from_field(const_tree field_decl);
 extern void set_dominance_info(void);

@@ -40,6 +40,42 @@ static void change_size_overflow_asm_input(gasm *stmt, tree new_input)
 	gimple_asm_set_input_op(stmt, 0, list);
 }
 
+static void change_field_write_rhs(gassign *assign, const_tree orig_rhs, tree new_rhs)
+{
+	const_tree rhs1, rhs2, rhs3 = NULL_TREE;
+
+	rhs1 = gimple_assign_rhs1(assign);
+	if (rhs1 == orig_rhs) {
+		gimple_assign_set_rhs1(assign, new_rhs);
+		return;
+	}
+
+	rhs2 = gimple_assign_rhs2(assign);
+	if (rhs2 == orig_rhs) {
+		gimple_assign_set_rhs2(assign, new_rhs);
+		return;
+	}
+
+#if BUILDING_GCC_VERSION >= 4006
+	rhs3 = gimple_assign_rhs3(assign);
+	if (rhs3 == orig_rhs) {
+		gimple_assign_set_rhs3(assign, new_rhs);
+		return;
+	}
+#endif
+
+	debug_gimple_stmt(assign);
+	fprintf(stderr, "orig_rhs:\n");
+	debug_tree((tree)orig_rhs);
+	fprintf(stderr, "rhs1:\n");
+	debug_tree((tree)rhs1);
+	fprintf(stderr, "rhs2:\n");
+	debug_tree((tree)rhs2);
+	fprintf(stderr, "rhs3:\n");
+	debug_tree((tree)rhs3);
+	gcc_unreachable();
+}
+
 static void change_orig_node(struct visited *visited, gimple stmt, const_tree orig_node, tree new_node, unsigned int num)
 {
 	tree cast_lhs = cast_to_orig_type(visited, stmt, orig_node, new_node);
@@ -49,10 +85,13 @@ static void change_orig_node(struct visited *visited, gimple stmt, const_tree or
 		gimple_return_set_retval(as_a_greturn(stmt), cast_lhs);
 		break;
 	case GIMPLE_CALL:
-		gimple_call_set_arg(stmt, num - 1, cast_lhs);
+		gimple_call_set_arg(as_a_gcall(stmt), num - 1, cast_lhs);
 		break;
 	case GIMPLE_ASM:
 		change_size_overflow_asm_input(as_a_gasm(stmt), cast_lhs);
+		break;
+	case GIMPLE_ASSIGN:
+		change_field_write_rhs(as_a_gassign(stmt), orig_node, cast_lhs);
 		break;
 	default:
 		debug_gimple_stmt(stmt);
@@ -119,9 +158,12 @@ static struct interesting_stmts *search_interesting_stmt(struct interesting_stmt
 
 	orig_code = TREE_CODE(orig_node);
 	gcc_assert(orig_code != FIELD_DECL && orig_code != FUNCTION_DECL);
-	gcc_assert(!skip_types(orig_node));
 
-	if (check_intentional_asm(first_stmt, num) != MARK_NO)
+	if (skip_types(orig_node))
+		return head;
+
+	// find a defining marked caller argument or struct field for arg
+	if (check_intentional_size_overflow_asm_and_attribute(orig_node) != MARK_NO)
 		return head;
 
 	if (SSA_NAME_IS_DEFAULT_DEF(orig_node))
@@ -290,6 +332,45 @@ static struct interesting_stmts *search_interesting_calls(struct interesting_stm
 	return head;
 }
 
+// Find assignements to structure fields
+static struct interesting_stmts *search_interesting_structs(struct interesting_stmts *head, gassign *assign)
+{
+	const_tree lhs;
+	tree rhs1, rhs2;
+#if BUILDING_GCC_VERSION >= 4006
+	tree rhs3;
+#endif
+	bool is_interesting_type;
+	struct fn_raw_data raw_data;
+
+	lhs = gimple_assign_lhs(assign);
+
+	raw_data.decl = get_ref_field(lhs);
+	if (raw_data.decl == NULL_TREE)
+		return head;
+
+	raw_data.decl_str = DECL_NAME_POINTER(raw_data.decl);
+	raw_data.num = 0;
+	raw_data.marked = YES_SO_MARK;
+	is_interesting_type = get_global_next_interesting_function_entry_with_hash(&raw_data) != NULL;
+	if (!is_interesting_type && !get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num))
+		return head;
+
+	rhs1 = gimple_assign_rhs1(assign);
+	head = search_interesting_stmt(head, assign, rhs1, raw_data.num);
+
+	rhs2 = gimple_assign_rhs2(assign);
+	if (rhs2)
+		head = search_interesting_stmt(head, assign, rhs2, raw_data.num);
+
+#if BUILDING_GCC_VERSION >= 4006
+	rhs3 = gimple_assign_rhs3(assign);
+	if (rhs3)
+		head = search_interesting_stmt(head, assign, rhs3, raw_data.num);
+#endif
+	return head;
+}
+
 // Collect interesting stmts for duplication
 static void search_interesting_stmts(struct visited *visited)
 {
@@ -323,6 +404,9 @@ static void search_interesting_stmts(struct visited *visited)
 				break;
 			case GIMPLE_CALL:
 				head = search_interesting_calls(head, as_a_gcall(stmt));
+				break;
+			case GIMPLE_ASSIGN:
+				head = search_interesting_structs(head, as_a_gassign(stmt));
 				break;
 			default:
 				break;

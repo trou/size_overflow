@@ -166,7 +166,7 @@ static void set_decl_codes(struct decl_hash *decl_hash_data)
 	const_tree arg, type;
 	enum tree_code code;
 
-	if (TREE_CODE(decl_hash_data->decl) == VAR_DECL) {
+	if (TREE_CODE(decl_hash_data->decl) == VAR_DECL || TREE_CODE(decl_hash_data->decl) == FIELD_DECL) {
 		set_decl_type_codes(TREE_TYPE(decl_hash_data->decl), decl_hash_data);
 		return;
 	}
