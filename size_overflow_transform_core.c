@@ -304,7 +304,7 @@ static gphi *overflow_create_phi_node(struct visited *visited, gphi *oldstmt, tr
 		result = create_new_var(size_overflow_type);
 	}
 
-	phi = create_phi_node(result, bb);
+	phi = as_a_gphi(create_phi_node(result, bb));
 	gimple_phi_set_result(phi, make_ssa_name(result, phi));
 	seq = phi_nodes(bb);
 	gsi = gsi_last(seq);
@@ -492,7 +492,7 @@ static void insert_cond_result(basic_block bb_true, const_gimple stmt, const_tre
 	ssa_name = create_string_param(ssa_name);
 
 	// void report_size_overflow(const char *file, unsigned int line, const char *func, const char *ssa_name)
-	func_stmt = gimple_build_call(report_size_overflow_decl, 4, loc_file, loc_line, current_func, ssa_name);
+	func_stmt = as_a_gcall(gimple_build_call(report_size_overflow_decl, 4, loc_file, loc_line, current_func, ssa_name));
 	gsi_insert_after(&gsi, func_stmt, GSI_CONTINUE_LINKING);
 
 	report_node = cgraph_get_create_node(report_size_overflow_decl);
