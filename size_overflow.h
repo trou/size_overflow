@@ -202,7 +202,7 @@ extern struct opt_pass *make_insert_size_overflow_asm_pass(void);
 extern bool search_interesting_args(tree fndecl, bool *argnums);
 
 
-// misc.c
+// size_overflow_misc.c
 extern bool is_vararg(const_tree fn, unsigned int num);
 extern tree get_ref_field(const_tree ref);
 extern unsigned int get_correct_argnum_fndecl(const_tree fndecl, const_tree correct_argnum_of_fndecl, unsigned int num);
