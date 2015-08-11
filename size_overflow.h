@@ -192,6 +192,7 @@ extern bool search_interesting_args(tree fndecl, bool *argnums);
 
 
 // misc.c
+extern bool is_vararg(const_tree fn, unsigned int num);
 extern unsigned int get_correct_argnum_fndecl(const_tree fndecl, const_tree correct_argnum_of_fndecl, unsigned int num);
 extern const char *get_type_name_from_field(const_tree field_decl);
 extern void set_dominance_info(void);

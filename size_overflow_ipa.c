@@ -96,39 +96,6 @@ next_interesting_function_t get_global_next_interesting_function_entry_with_hash
 	return get_global_next_interesting_function_entry(decl_name, context, hash, num, marked);
 }
 
-static bool is_vararg(const_tree fn, unsigned int num)
-{
-	const_tree fn_type, last, type;
-	tree arg_list;
-
-	if (num == 0)
-		return false;
-	if (fn == NULL_TREE)
-		return false;
-	if (TREE_CODE(fn) != FUNCTION_DECL)
-		return false;
-
-	fn_type = TREE_TYPE(fn);
-	if (fn_type == NULL_TREE)
-		return false;
-
-	arg_list = TYPE_ARG_TYPES(fn_type);
-	if (arg_list == NULL_TREE)
-		return false;
-	last = TREE_VALUE(tree_last(arg_list));
-
-	if (TREE_CODE_CLASS(TREE_CODE(last)) == tcc_type)
-		type = last;
-	else
-		type = TREE_TYPE(last);
-
-	gcc_assert(type != NULL_TREE);
-	if (type == void_type_node)
-		return false;
-
-	return num >= (unsigned int)list_length(arg_list);
-}
-
 next_interesting_function_t create_new_next_interesting_entry(const char *decl_name, const char *context, unsigned int hash, unsigned int num, enum size_overflow_mark marked, next_interesting_function_t orig_next_node)
 {
 	next_interesting_function_t new_node;

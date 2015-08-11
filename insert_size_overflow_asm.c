@@ -321,7 +321,7 @@ static void handle_size_overflow_attr_call(gcall *stmt)
 	for (argnum = 1; argnum <= gimple_call_num_args(stmt); argnum++) {
 		enum intentional_mark mark = handle_intentional_attr(stmt, argnum);
 
-		if (mark == MARK_NO && orig_argnums[argnum])
+		if (mark == MARK_NO && !is_vararg(fndecl, argnum) && orig_argnums[argnum])
 			insert_so_asm_by_so_attr(stmt, argnum);
 	}
 }

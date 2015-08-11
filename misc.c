@@ -19,6 +19,27 @@
 
 #include "size_overflow.h"
 
+bool is_vararg(const_tree fn, unsigned int num)
+{
+	tree arg_list;
+
+	if (num == 0)
+		return false;
+	if (fn == NULL_TREE)
+		return false;
+	if (TREE_CODE(fn) != FUNCTION_DECL)
+		return false;
+
+	arg_list = TYPE_ARG_TYPES(TREE_TYPE(fn));
+	if (arg_list == NULL_TREE)
+		return false;
+
+	if (tree_last(arg_list) == void_list_node)
+		return false;
+
+	return num >= (unsigned int)list_length(arg_list);
+}
+
 const char *get_type_name_from_field(const_tree field_decl)
 {
 	const_tree context, type_name;
