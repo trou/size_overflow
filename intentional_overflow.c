@@ -620,10 +620,10 @@ static bool is_subtraction_special(struct visited *visited, const gassign *stmt)
 	if (is_gimple_constant(rhs1) || is_gimple_constant(rhs2))
 		return false;
 
-	gcc_assert(TREE_CODE(rhs1) == SSA_NAME && TREE_CODE(rhs2) == SSA_NAME);
-
 	if (gimple_assign_rhs_code(stmt) != MINUS_EXPR)
 		return false;
+
+	gcc_assert(TREE_CODE(rhs1) == SSA_NAME && TREE_CODE(rhs2) == SSA_NAME);
 
 	rhs1_def_stmt = get_def_stmt(rhs1);
 	rhs2_def_stmt = get_def_stmt(rhs2);
