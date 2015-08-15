@@ -348,6 +348,8 @@ static struct interesting_stmts *search_interesting_structs(struct interesting_s
 	raw_data.decl = get_ref_field(lhs);
 	if (raw_data.decl == NULL_TREE)
 		return head;
+	if (DECL_NAME(raw_data.decl) == NULL_TREE)
+		return head;
 
 	raw_data.decl_str = DECL_NAME_POINTER(raw_data.decl);
 	raw_data.num = 0;

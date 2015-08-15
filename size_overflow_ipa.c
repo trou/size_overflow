@@ -199,6 +199,8 @@ next_interesting_function_t get_and_create_next_node_from_global_next_nodes(stru
 {
 	next_interesting_function_t cur_next_cnode;
 
+	if (DECL_NAME(raw_data->decl) == NULL_TREE)
+		return NULL;
 	raw_data->decl_str = DECL_NAME_POINTER(raw_data->decl);
 
 	cur_next_cnode = get_global_next_interesting_function_entry_with_hash(raw_data);
@@ -339,6 +341,9 @@ static next_interesting_function_t handle_struct_fields(next_interesting_functio
 	}
 
 	if (raw_data.decl == NULL_TREE)
+		return head;
+
+	if (DECL_NAME(raw_data.decl) == NULL_TREE)
 		return head;
 
 	raw_data.decl_str = DECL_NAME_POINTER(raw_data.decl);
