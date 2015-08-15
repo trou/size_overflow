@@ -193,6 +193,7 @@ static void handle_interesting_stmt(struct visited *visited, struct interesting_
 
 static bool is_interesting_function(tree decl, unsigned int num)
 {
+	next_interesting_function_t next_node;
 	const struct size_overflow_hash *so_hash;
 	struct fn_raw_data raw_data;
 
@@ -200,7 +201,9 @@ static bool is_interesting_function(tree decl, unsigned int num)
 	raw_data.decl_str = DECL_NAME_POINTER(decl);
 	raw_data.num = num;
 	raw_data.marked = YES_SO_MARK;
-	if (get_global_next_interesting_function_entry_with_hash(&raw_data))
+
+	next_node = get_global_next_interesting_function_entry_with_hash(&raw_data);
+	if (next_node && next_node->marked != NO_SO_MARK)
 		return true;
 
 	if (made_by_compiler(raw_data.decl))
@@ -335,12 +338,12 @@ static struct interesting_stmts *search_interesting_calls(struct interesting_stm
 // Find assignements to structure fields
 static struct interesting_stmts *search_interesting_structs(struct interesting_stmts *head, gassign *assign)
 {
+	next_interesting_function_t next_node;
 	const_tree lhs;
 	tree rhs1, rhs2;
 #if BUILDING_GCC_VERSION >= 4006
 	tree rhs3;
 #endif
-	bool is_interesting_type;
 	struct fn_raw_data raw_data;
 
 	lhs = gimple_assign_lhs(assign);
@@ -354,8 +357,8 @@ static struct interesting_stmts *search_interesting_structs(struct interesting_s
 	raw_data.decl_str = DECL_NAME_POINTER(raw_data.decl);
 	raw_data.num = 0;
 	raw_data.marked = YES_SO_MARK;
-	is_interesting_type = get_global_next_interesting_function_entry_with_hash(&raw_data) != NULL;
-	if (!is_interesting_type && !get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num))
+	next_node = get_global_next_interesting_function_entry_with_hash(&raw_data);
+	if ((!next_node || next_node->marked == NO_SO_MARK) && !get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num))
 		return head;
 
 	rhs1 = gimple_assign_rhs1(assign);
