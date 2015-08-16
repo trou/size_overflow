@@ -46,7 +46,7 @@ static bool compare_next_interesting_functions(next_interesting_function_t cur_n
 }
 
 // Return the type name for a function pointer (or "fielddecl" if the type has no name), otherwise either "vardecl" or "fndecl"
-static const char* get_decl_context(const_tree decl)
+const char* get_decl_context(const_tree decl)
 {
 	const char *context;
 
@@ -743,7 +743,7 @@ static bool already_in_the_hashtable(next_interesting_function_t next_node)
 {
 	if (next_node->orig_next_node)
 		next_node = next_node->orig_next_node;
-	return get_size_overflow_hash_entry(next_node->hash, next_node->decl_name, next_node->num) != NULL;
+	return get_size_overflow_hash_entry(next_node->hash, next_node->decl_name, next_node->context, next_node->num) != NULL;
 }
 
 // Propagate the size_overflow marks up the use-def chains

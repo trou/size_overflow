@@ -44,6 +44,7 @@ struct decl_hash {
 	size_t tree_codes_len;
 	unsigned char tree_codes[CODES_LIMIT];
 	const_tree decl;
+	const char *context;
 	unsigned int hash;
 	const char *fn_name;
 };
@@ -164,6 +165,7 @@ extern tree size_overflow_type_TI;
 struct size_overflow_hash {
 	const struct size_overflow_hash * const next;
 	const char * const name;
+	const char * const context;
 	const unsigned int param;
 };
 
@@ -173,7 +175,7 @@ extern void print_missing_function(next_interesting_function_t node);
 extern const struct size_overflow_hash *get_size_overflow_hash_entry_tree(const_tree fndecl, unsigned int argnum);
 extern unsigned int find_arg_number_tree(const_tree arg, const_tree func);
 extern unsigned int get_decl_hash(const_tree decl, const char *decl_name);
-extern const struct size_overflow_hash *get_size_overflow_hash_entry(unsigned int hash, const char *decl_name, unsigned int argnum);
+extern const struct size_overflow_hash *get_size_overflow_hash_entry(unsigned int hash, const char *decl_name, const char *context, unsigned int argnum);
 
 
 // intentional_overflow.c
@@ -246,6 +248,7 @@ extern void create_up_and_down_cast(struct visited *visited, gassign *use_stmt, 
 
 
 // size_overflow_ipa.c
+extern const char* get_decl_context(const_tree decl);
 extern void add_to_global_next_interesting_function(next_interesting_function_t new_entry);
 extern bool has_next_interesting_function_vec(next_interesting_function_t target, next_interesting_function_t next_node);
 extern void push_child(next_interesting_function_t parent, next_interesting_function_t child);
