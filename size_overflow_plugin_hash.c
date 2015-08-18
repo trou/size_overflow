@@ -330,6 +330,6 @@ void print_missing_function(next_interesting_function_t node)
 		return;
 
 	// inform() would be too slow
-	fprintf(stderr, "Function %s is missing from the size_overflow hash table +%s+%u+%u+%s+\n", decl_name, decl_name, argnum, hash, node->context);
+	fprintf(stderr, "Function %s is missing from the size_overflow hash table +%s+%s+%u+%u+\n", decl_name, decl_name, node->context, argnum, hash);
 }
 
