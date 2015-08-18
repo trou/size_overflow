@@ -953,7 +953,7 @@ static unsigned int size_overflow_execute(void)
 	visited = next_interesting_function_pointer_set_create();
 	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
 		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
-			if (cur_global->marked == ASM_STMT_SO_MARK)
+			if (cur_global->marked != NO_SO_MARK && !pointer_set_insert(visited, cur_global))
 				print_missing_functions(visited, cur_global);
 		}
 	}
