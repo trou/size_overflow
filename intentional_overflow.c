@@ -330,6 +330,9 @@ enum intentional_mark check_intentional_size_overflow_asm_and_attribute(const_tr
 	enum intentional_mark mark;
 	gimple_set *visited;
 
+	if (is_turn_off_intentional_attr(get_orig_fndecl(current_function_decl)))
+		return MARK_TURN_OFF;
+
 	visited = pointer_set_create();
 	mark = walk_use_def(visited, var);
 	pointer_set_destroy(visited);
