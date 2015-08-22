@@ -309,7 +309,7 @@ void print_missing_function(next_interesting_function_t node)
 {
 	unsigned int argnum, hash;
 	const struct size_overflow_hash *entry;
-	const char *decl_name, *context;
+	const char *decl_name;
 
 	if (node->marked == ASM_STMT_SO_MARK)
 		return;
