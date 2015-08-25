@@ -894,6 +894,11 @@ static void set_so_mark(next_interesting_function_set *visited, next_interesting
 		if (parent->marked != NO_SO_MARK)
 			set_yes_so_mark(child);
 		set_fn_mark(child);
+
+		if (in_lto_p) {
+			fprintf(stderr, " PARENT: decl: %s-%u context: %s %p\n", parent->decl_name, parent->num, parent->context, parent);
+			fprintf(stderr, " \tCHILD: decl: %s-%u context: %s %p\n", child->decl_name, child->num, child->context, child);
+		}
 		if (!pointer_set_insert(visited, child))
 			set_so_mark(visited, child);
 	}
@@ -945,6 +950,11 @@ static unsigned int size_overflow_execute(void)
 		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
 			if (cur_global->marked == ASM_STMT_SO_MARK)
 				set_so_mark(visited, cur_global);
+			if  (in_lto_p)
+				fprintf(stderr, "Data flow: decl: %s-%u context: %s %p\n", cur_global->decl_name, cur_global->num, cur_global->context, cur_global);
+
+			if  (in_lto_p)
+				fprintf(stderr, "\n");
 		}
 	}
 	pointer_set_destroy(visited);
