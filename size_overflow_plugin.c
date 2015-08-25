@@ -255,17 +255,6 @@ int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gcc_version 
 	struct register_pass_info size_overflow_functions_pass_info;
 #if BUILDING_GCC_VERSION >= 4009
 	struct register_pass_info disable_ubsan_si_overflow_pass_info;
-
-	if (flag_sanitize & SANITIZE_SI_OVERFLOW) {
-		error(G_("ubsan SANITIZE_SI_OVERFLOW option is unsupported"));
-		return 1;
-	}
-	flag_sanitize |= SANITIZE_SI_OVERFLOW;
-
-	disable_ubsan_si_overflow_pass_info.pass			= make_disable_ubsan_si_overflow_pass();
-	disable_ubsan_si_overflow_pass_info.reference_pass_name		= "ubsan";
-	disable_ubsan_si_overflow_pass_info.ref_pass_instance_number	= 1;
-	disable_ubsan_si_overflow_pass_info.pos_op			= PASS_POS_INSERT_BEFORE;
 #endif
 
 	static const struct ggc_root_tab gt_ggc_r_gt_size_overflow[] = {
@@ -304,9 +293,21 @@ int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gcc_version 
 
 	register_callback(plugin_name, PLUGIN_INFO, NULL, &size_overflow_plugin_info);
 	if (enable) {
+#if BUILDING_GCC_VERSION >= 4009
+		if (flag_sanitize & SANITIZE_SI_OVERFLOW) {
+			error(G_("ubsan SANITIZE_SI_OVERFLOW option is unsupported"));
+			return 1;
+		}
+#endif
 		register_callback(plugin_name, PLUGIN_START_UNIT, &size_overflow_start_unit, NULL);
 		register_callback(plugin_name, PLUGIN_REGISTER_GGC_ROOTS, NULL, (void *)&gt_ggc_r_gt_size_overflow);
 #if BUILDING_GCC_VERSION >= 4009
+		flag_sanitize |= SANITIZE_SI_OVERFLOW;
+		disable_ubsan_si_overflow_pass_info.pass			= make_disable_ubsan_si_overflow_pass();
+		disable_ubsan_si_overflow_pass_info.reference_pass_name		= "ubsan";
+		disable_ubsan_si_overflow_pass_info.ref_pass_instance_number	= 1;
+		disable_ubsan_si_overflow_pass_info.pos_op			= PASS_POS_INSERT_BEFORE;
+
 		register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &disable_ubsan_si_overflow_pass_info);
 #endif
 		register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &insert_size_overflow_asm_pass_info);
