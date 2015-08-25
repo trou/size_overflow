@@ -22,6 +22,9 @@
 static next_interesting_function_t walk_use_def_next_functions(gimple_set *visited, next_interesting_function_t next_cnodes_head, const_tree lhs);
 
 next_interesting_function_t global_next_interesting_function[GLOBAL_NIFN_LEN];
+static bool global_changed;
+#define PRINT_DATA_FLOW true
+#define NO_PRINT_DATA_FLOW false
 
 static struct cgraph_node_hook_list *function_insertion_hook_holder;
 static struct cgraph_2node_hook_list *node_duplication_hook_holder;
@@ -718,11 +721,15 @@ void size_overflow_register_hooks(void)
 
 static void set_yes_so_mark(next_interesting_function_t next_node)
 {
-	if (next_node->marked == NO_SO_MARK)
+	if (next_node->marked == NO_SO_MARK) {
 		next_node->marked = YES_SO_MARK;
+		global_changed = true;
+	}
 	// Mark the orig decl as well if it's a clone
-	if (next_node->orig_next_node && next_node->orig_next_node->marked == NO_SO_MARK)
+	if (next_node->orig_next_node && next_node->orig_next_node->marked == NO_SO_MARK) {
 		next_node->orig_next_node->marked = YES_SO_MARK;
+		global_changed = true;
+	}
 }
 
 // Determine whether node or orig node is part of a tracked data flow
@@ -775,7 +782,7 @@ static bool has_marked_child(next_interesting_function_t next_node)
  *      * the function's orig node is marked with YES_SO_MARK or ASM_STMT_SO_MARK
  *      * one of the children is marked with YES_SO_MARK or ASM_STMT_SO_MARK
  */
-static void set_fn_mark(next_interesting_function_t next_node)
+static bool set_fn_so_mark(next_interesting_function_t next_node)
 {
 	bool so_fn, so_hashtable, so_child;
 
@@ -783,8 +790,10 @@ static void set_fn_mark(next_interesting_function_t next_node)
 	so_fn = marked_fn(next_node);
 	so_child = has_marked_child(next_node);
 
-	if (so_fn || so_hashtable || so_child)
-		set_yes_so_mark(next_node);
+	if (!so_fn && !so_hashtable && !so_child)
+		return false;
+	set_yes_so_mark(next_node);
+	return true;
 }
 
 // Determine if any of the function pointer targets have data flow between the return value and one of the arguments
@@ -876,13 +885,14 @@ static void search_missing_fptr_arg(next_interesting_function_t parent)
 #endif
 }
 
-static void set_so_mark(next_interesting_function_set *visited, next_interesting_function_t parent)
+static void walk_so_marked_fns(next_interesting_function_set *visited, next_interesting_function_t parent, bool debug)
 {
 	unsigned int i;
 	next_interesting_function_t child;
 
 	gcc_assert(parent);
-	set_fn_mark(parent);
+	if (!set_fn_so_mark(parent))
+		return;
 
 #if BUILDING_GCC_VERSION <= 4007
 	if (VEC_empty(next_interesting_function_t, parent->children))
@@ -891,16 +901,15 @@ static void set_so_mark(next_interesting_function_set *visited, next_interesting
 #else
 	FOR_EACH_VEC_SAFE_ELT(parent->children, i, child) {
 #endif
-		if (parent->marked != NO_SO_MARK)
-			set_yes_so_mark(child);
-		set_fn_mark(child);
+		set_yes_so_mark(child);
 
-		if (in_lto_p) {
+		if (in_lto_p && debug == PRINT_DATA_FLOW) {
 			fprintf(stderr, " PARENT: decl: %s-%u context: %s %p\n", parent->decl_name, parent->num, parent->context, parent);
 			fprintf(stderr, " \tCHILD: decl: %s-%u context: %s %p\n", child->decl_name, child->num, child->context, child);
 		}
+
 		if (!pointer_set_insert(visited, child))
-			set_so_mark(visited, child);
+			walk_so_marked_fns(visited, child, debug);
 	}
 }
 
@@ -927,13 +936,55 @@ static void print_missing_functions(next_interesting_function_set *visited, next
 	}
 }
 
+// Set YES_SO_MARK on functions that will be emitted into the hash table
+static void search_so_marked_fns(bool debug)
+{
+
+	unsigned int i;
+	next_interesting_function_set *visited;
+	next_interesting_function_t cur_global;
+
+	visited = next_interesting_function_pointer_set_create();
+	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
+		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
+			if (cur_global->marked == NO_SO_MARK || pointer_set_insert(visited, cur_global))
+				continue;
+
+			if  (in_lto_p && debug == PRINT_DATA_FLOW)
+				fprintf(stderr, "Data flow: decl: %s-%u context: %s %p\n", cur_global->decl_name, cur_global->num, cur_global->context, cur_global);
+
+			walk_so_marked_fns(visited, cur_global, debug);
+
+			if  (in_lto_p && debug == PRINT_DATA_FLOW)
+				fprintf(stderr, "\n");
+		}
+	}
+	pointer_set_destroy(visited);
+}
+
+// Print functions missing from the hash table
+static void print_so_marked_fns(void)
+{
+	unsigned int i;
+	next_interesting_function_set *visited;
+	next_interesting_function_t cur_global;
+
+	visited = next_interesting_function_pointer_set_create();
+	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
+		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
+			if (cur_global->marked != NO_SO_MARK && !pointer_set_insert(visited, cur_global))
+				print_missing_functions(visited, cur_global);
+		}
+	}
+	pointer_set_destroy(visited);
+}
+
 void __attribute__((weak)) check_global_variables(next_interesting_function_t cur_global __unused) {}
 
 // Print all missing interesting functions
 static unsigned int size_overflow_execute(void)
 {
 	unsigned int i;
-	next_interesting_function_set *visited;
 	next_interesting_function_t cur_global;
 
 	// Collect vardecls and funtions reachable by function pointers
@@ -944,30 +995,13 @@ static unsigned int size_overflow_execute(void)
 		}
 	}
 
-	// Set YES_SO_MARK on functions that will be emitted into the hash table
-	visited = next_interesting_function_pointer_set_create();
-	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
-		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
-			if (cur_global->marked == ASM_STMT_SO_MARK)
-				set_so_mark(visited, cur_global);
-			if  (in_lto_p)
-				fprintf(stderr, "Data flow: decl: %s-%u context: %s %p\n", cur_global->decl_name, cur_global->num, cur_global->context, cur_global);
-
-			if  (in_lto_p)
-				fprintf(stderr, "\n");
-		}
+	search_so_marked_fns(PRINT_DATA_FLOW);
+	while (global_changed) {
+		global_changed = false;
+		search_so_marked_fns(NO_PRINT_DATA_FLOW);
 	}
-	pointer_set_destroy(visited);
 
-	// Print functions missing from the hash table
-	visited = next_interesting_function_pointer_set_create();
-	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
-		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
-			if (cur_global->marked != NO_SO_MARK && !pointer_set_insert(visited, cur_global))
-				print_missing_functions(visited, cur_global);
-		}
-	}
-	pointer_set_destroy(visited);
+	print_so_marked_fns();
 
 	if (in_lto_p) {
 		fprintf(stderr, "%s: SIZE_OVERFLOW EXECUTE\n", __func__);
