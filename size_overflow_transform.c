@@ -194,7 +194,7 @@ static void handle_interesting_stmt(struct visited *visited, struct interesting_
 static bool is_interesting_function(tree decl, unsigned int num)
 {
 	next_interesting_function_t next_node;
-	const struct size_overflow_hash *so_hash;
+	const struct size_overflow_hash *so_hash, *disable_so_hash;
 	struct fn_raw_data raw_data;
 
 	raw_data.decl = decl;
@@ -203,13 +203,19 @@ static bool is_interesting_function(tree decl, unsigned int num)
 	raw_data.marked = YES_SO_MARK;
 
 	next_node = get_global_next_interesting_function_entry_with_hash(&raw_data);
+	if (next_node && next_node->marked == ERROR_CODE_SO_MARK)
+		return false;
 	if (next_node && next_node->marked != NO_SO_MARK)
 		return true;
 
 	if (made_by_compiler(raw_data.decl))
 		return false;
 
-	so_hash = get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num);
+	disable_so_hash = get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num, ONLY_DISABLE_SO);
+	if (disable_so_hash != NULL)
+		return false;
+
+	so_hash = get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num, ONLY_SO);
 	return so_hash != NULL;
 }
 
@@ -358,7 +364,11 @@ static struct interesting_stmts *search_interesting_structs(struct interesting_s
 	raw_data.num = 0;
 	raw_data.marked = YES_SO_MARK;
 	next_node = get_global_next_interesting_function_entry_with_hash(&raw_data);
-	if ((!next_node || next_node->marked == NO_SO_MARK) && !get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num))
+	if (next_node && next_node->marked == ERROR_CODE_SO_MARK)
+		return head;
+	if (get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num, ONLY_DISABLE_SO))
+		return head;
+	if ((!next_node || next_node->marked == NO_SO_MARK) && !get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num, ONLY_SO))
 		return head;
 
 	rhs1 = gimple_assign_rhs1(assign);
