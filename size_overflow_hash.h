@@ -31,12 +31,6 @@
 #define PARAM30 (1U << 30)
 #define PARAM31 (1U << 31)
 
-const struct size_overflow_hash dle_count_543 = {
-	.next	= NULL,
-	.name	= "dle_count",
-	.param	= PARAM0,
-};
-
 const struct size_overflow_hash * const size_overflow_hash[65536] = {
 	[0]	= NULL,
 	[1]	= NULL,
