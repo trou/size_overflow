@@ -584,7 +584,7 @@ static tree change_assign_rhs(struct visited *visited, gassign *stmt, const_tree
 	return get_lhs(assign);
 }
 
-tree handle_intentional_overflow(struct visited *visited, bool check_overflow, gassign *stmt, tree change_rhs, tree new_rhs2)
+tree handle_intentional_overflow(struct visited *visited, next_interesting_function_t expand_from, bool check_overflow, gassign *stmt, tree change_rhs, tree new_rhs2)
 {
 	tree new_rhs, orig_rhs;
 	void (*gimple_assign_set_rhs)(gimple, tree);
@@ -606,7 +606,7 @@ tree handle_intentional_overflow(struct visited *visited, bool check_overflow, g
 		gimple_assign_set_rhs = &gimple_assign_set_rhs2;
 	}
 
-	check_size_overflow(stmt, TREE_TYPE(change_rhs), change_rhs, orig_rhs, BEFORE_STMT);
+	check_size_overflow(expand_from, stmt, TREE_TYPE(change_rhs), change_rhs, orig_rhs, BEFORE_STMT);
 
 	new_rhs = change_assign_rhs(visited, stmt, orig_rhs, change_rhs);
 	gimple_assign_set_rhs(stmt, new_rhs);
@@ -718,7 +718,7 @@ static tree get_def_stmt_rhs(struct visited *visited, const_tree var)
 	}
 }
 
-tree handle_integer_truncation(struct visited *visited, const_tree lhs)
+tree handle_integer_truncation(struct visited *visited, next_interesting_function_t expand_from, const_tree lhs)
 {
 	tree new_rhs1, new_rhs2;
 	tree new_rhs1_def_stmt_rhs1, new_rhs2_def_stmt_rhs1, new_lhs;
@@ -729,8 +729,8 @@ tree handle_integer_truncation(struct visited *visited, const_tree lhs)
 	if (!is_subtraction_special(visited, stmt))
 		return NULL_TREE;
 
-	new_rhs1 = expand(visited, rhs1);
-	new_rhs2 = expand(visited, rhs2);
+	new_rhs1 = expand(visited, expand_from, rhs1);
+	new_rhs2 = expand(visited, expand_from, rhs2);
 
 	new_rhs1_def_stmt_rhs1 = get_def_stmt_rhs(visited, new_rhs1);
 	new_rhs2_def_stmt_rhs1 = get_def_stmt_rhs(visited, new_rhs2);
@@ -745,7 +745,7 @@ tree handle_integer_truncation(struct visited *visited, const_tree lhs)
 
 	assign = create_binary_assign(visited, MINUS_EXPR, stmt, new_rhs1_def_stmt_rhs1, new_rhs2_def_stmt_rhs1);
 	new_lhs = gimple_assign_lhs(assign);
-	check_size_overflow(assign, TREE_TYPE(new_lhs), new_lhs, rhs1, AFTER_STMT);
+	check_size_overflow(expand_from, assign, TREE_TYPE(new_lhs), new_lhs, rhs1, AFTER_STMT);
 
 	return dup_assign(visited, stmt, lhs, new_rhs1, new_rhs2, NULL_TREE);
 }
