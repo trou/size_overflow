@@ -229,6 +229,7 @@ enum intentional_mark get_intentional_attr_type(const_tree node)
 			return MARK_TURN_OFF;
 		if (is_end_intentional_intentional_attr(fndecl))
 			return MARK_END_INTENTIONAL;
+		break;
 	}
 	case FIELD_DECL:
 	case VAR_DECL:
