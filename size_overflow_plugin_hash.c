@@ -223,7 +223,8 @@ const char *get_orig_decl_name(const_tree decl)
 
 	if (made_by_compiler(orig_decl)) {
 		end = memchr(name, '.', len);
-		gcc_assert(end);
+		if (!end)
+			return xstrndup(name, len);
 		len = (long)end - (long)name;
 		gcc_assert(len > 0);
 	}
