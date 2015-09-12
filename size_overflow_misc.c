@@ -299,7 +299,8 @@ unsigned int get_correct_argnum_fndecl(const_tree fndecl, const_tree correct_arg
 		return CANNOT_FIND_ARG;
 
 	fndecl_arg = chain_index(num - 1, fndecl_arglist);
-	gcc_assert(fndecl_arg != NULL_TREE);
+	if (fndecl_arg == NULL_TREE)
+		return CANNOT_FIND_ARG;
 
 	for (arg = target_fndecl_arglist, new_num = 1; arg; arg = TREE_CHAIN(arg), new_num++) {
 		if (arg == fndecl_arg || !strcmp(DECL_NAME_POINTER(arg), DECL_NAME_POINTER(fndecl_arg)))
