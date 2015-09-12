@@ -18,6 +18,7 @@
  */
 
 #include "size_overflow.h"
+#include <libgen.h>
 
 static void walk_use_def_next_functions(struct walk_use_def_data *use_def_data, tree lhs);
 
@@ -124,23 +125,45 @@ static bool compare_next_interesting_functions(next_interesting_function_t cur_n
 	return true;
 }
 
+// Return the context of vardecl. If it is in a file scope then the context is vardecl_filebasename
+static const char* get_vardecl_context(const_tree decl)
+{
+	expanded_location xloc;
+	char *buf, *path;
+	const char *bname;
+	int len;
+
+	xloc = expand_location(DECL_SOURCE_LOCATION(decl));
+	gcc_assert(xloc.file);
+	path = xstrdup(xloc.file);
+	bname = basename(path);
+
+	len = asprintf(&buf, "vardecl_%s", bname);
+	gcc_assert(len > 0);
+	return buf;
+}
+
 // Return the type name for a function pointer (or "fielddecl" if the type has no name), otherwise either "vardecl" or "fndecl"
 const char* get_decl_context(const_tree decl)
 {
-	const char *context;
-
-	if (TREE_CODE(decl) == VAR_DECL)
-		return "vardecl";
-	if (TREE_CODE(decl) == FUNCTION_DECL)
+	switch (TREE_CODE(decl)) {
+	case FUNCTION_DECL:
 		return "fndecl";
-
-	gcc_assert(TREE_CODE(decl) == FIELD_DECL);
-	context = get_type_name_from_field(decl);
-
-/* TODO: Ignore anonymous types for now
-	if (!context)
-		return "fielddecl"; */
-	return context;
+	// TODO: Ignore anonymous types for now
+	case FIELD_DECL:
+		return get_type_name_from_field(decl);
+	case VAR_DECL:
+		if (TREE_PUBLIC(decl) || DECL_EXTERNAL(decl))
+			return "vardecl";
+		if (TREE_STATIC(decl) && !TREE_PUBLIC(decl))
+			return get_vardecl_context(decl);
+		// ignore local variable
+		if (!TREE_STATIC(decl) && !DECL_EXTERNAL(decl))
+			return NULL;
+	default:
+		debug_tree((tree)decl);
+		gcc_unreachable();
+	}
 }
 
 static void set_default_error_data_flow(error_code_t new_node)
@@ -424,10 +447,31 @@ void __attribute__((weak)) handle_function_ptr_ret(struct walk_use_def_data *use
 {
 }
 
-static next_interesting_function_t handle_struct_fields(next_interesting_function_t head, const_tree node)
+static void create_and_append_new_next_interesting_field_var_decl(struct walk_use_def_data *use_def_data, struct fn_raw_data *raw_data)
+{
+	next_interesting_function_t new_node;
+
+	if (raw_data->decl == NULL_TREE)
+		return;
+
+	if (DECL_NAME(raw_data->decl) == NULL_TREE)
+		return;
+
+	raw_data->decl_str = DECL_NAME_POINTER(raw_data->decl);
+	raw_data->num = 0;
+	raw_data->marked = NO_SO_MARK;
+	raw_data->error_data_flow = use_def_data->error_data_flow;
+
+	new_node = create_new_next_interesting_decl(raw_data, NULL);
+	if (!new_node)
+		return;
+	new_node->next = use_def_data->next_cnodes_head;
+	use_def_data->next_cnodes_head = new_node;
+}
+
+static void handle_struct_fields(struct walk_use_def_data *use_def_data, const_tree node)
 {
 	struct fn_raw_data raw_data;
-	next_interesting_function_t new_node;
 
 	switch (TREE_CODE(node)) {
 	case ARRAY_REF:
@@ -448,21 +492,15 @@ static next_interesting_function_t handle_struct_fields(next_interesting_functio
 		gcc_unreachable();
 	}
 
-	if (raw_data.decl == NULL_TREE)
-		return head;
+	create_and_append_new_next_interesting_field_var_decl(use_def_data, &raw_data);
+}
 
-	if (DECL_NAME(raw_data.decl) == NULL_TREE)
-		return head;
+static void handle_vardecl(struct walk_use_def_data *use_def_data, tree node)
+{
+	struct fn_raw_data raw_data;
 
-	raw_data.decl_str = DECL_NAME_POINTER(raw_data.decl);
-	raw_data.num = 0;
-	raw_data.marked = NO_SO_MARK;
-
-	new_node = create_new_next_interesting_decl(&raw_data, NULL);
-	if (!new_node)
-		return head;
-	new_node->next = head;
-	return new_node;
+	raw_data.decl = node;
+	create_and_append_new_next_interesting_field_var_decl(use_def_data, &raw_data);
 }
 
 /* Find all functions that influence lhs
@@ -482,6 +520,11 @@ static void walk_use_def_next_functions(struct walk_use_def_data *use_def_data, 
 
 	if (skip_types(lhs))
 		goto out;
+
+	if (VAR_P(lhs)) {
+		handle_vardecl(use_def_data, lhs);
+		goto out;
+	}
 
 	code = TREE_CODE(lhs);
 	if (code == PARM_DECL) {
@@ -662,11 +705,17 @@ static next_interesting_function_t create_parent_next_cnode(const_gimple stmt, u
 	case GIMPLE_RETURN:
 		raw_data.decl = current_function_decl;
 		return get_and_create_next_node_from_global_next_nodes(&raw_data, NULL);
-	case GIMPLE_ASSIGN:
-		raw_data.decl = get_ref_field(gimple_assign_lhs(stmt));
+	case GIMPLE_ASSIGN: {
+		tree lhs = gimple_assign_lhs(stmt);
+
+		if (VAR_P(lhs))
+			raw_data.decl = lhs;
+		else
+			raw_data.decl = get_ref_field(lhs);
 		if (raw_data.decl == NULL_TREE)
 			return NULL;
 		return get_and_create_next_node_from_global_next_nodes(&raw_data, NULL);
+	}
 	default:
 		debug_gimple_stmt((gimple)stmt);
 		gcc_unreachable();
@@ -674,7 +723,7 @@ static next_interesting_function_t create_parent_next_cnode(const_gimple stmt, u
 }
 
 // Handle potential next_interesting_function_t parent if its argument has an integer type
-static void collect_all_possible_size_overflow_fns(const_gimple stmt, const_tree start_var, unsigned int num)
+static void collect_all_possible_size_overflow_fns(const_gimple stmt, tree start_var, unsigned int num)
 {
 	next_interesting_function_t children_next_cnode, parent_next_cnode;
 
@@ -1019,7 +1068,7 @@ static void search_missing_fptr_arg(next_interesting_function_t parent)
 		return;
 	if (!strcmp(parent->context, "fndecl"))
 		return;
-	if (!strcmp(parent->context, "vardecl"))
+	if (!strncmp(parent->context, "vardecl", sizeof("vardecl") - 1))
 		return;
 
 	// fnptr 0 && fn 0

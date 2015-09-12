@@ -206,7 +206,12 @@ const char *get_orig_decl_name(const_tree decl)
 	const char *name;
 	unsigned int len;
 	const void *end;
-	const_tree orig_decl = DECL_ORIGIN(decl);
+	const_tree orig_decl;
+
+	if (TREE_CODE(decl) == FUNCTION_DECL)
+		orig_decl = DECL_ORIGIN(decl);
+	else
+		orig_decl = decl;
 
 	len = DECL_NAME_LENGTH(orig_decl);
 	name = DECL_NAME_POINTER(orig_decl);

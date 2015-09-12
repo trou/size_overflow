@@ -48,6 +48,7 @@ static tree handle_size_overflow_attribute(tree *node, tree __unused name, tree 
 		break;
 	default:
 		*no_add_attrs = true;
+		debug_tree(*node);
 		error("%s: %qE attribute only applies to functions", __func__, name);
 		return NULL_TREE;
 	}
@@ -89,8 +90,12 @@ static tree handle_intentional_overflow_attribute(tree *node, tree __unused name
 		break;
 	case FIELD_DECL:
 		return NULL_TREE;
+	case VAR_DECL:
+		arg_count = type_num_arguments(TREE_TYPE(*node));
+		break;
 	default:
 		*no_add_attrs = true;
+		debug_tree(*node);
 		error("%qE attribute only applies to functions", name);
 		return NULL_TREE;
 	}

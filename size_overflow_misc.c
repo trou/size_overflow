@@ -414,6 +414,8 @@ tree get_orig_fndecl(const_tree clone_fndecl)
 {
 	struct cgraph_node *node;
 
+	gcc_assert(TREE_CODE(clone_fndecl) == FUNCTION_DECL);
+
 	if (DECL_ABSTRACT_ORIGIN(clone_fndecl))
 		return (tree)DECL_ORIGIN(clone_fndecl);
 	node = get_cnode(clone_fndecl);

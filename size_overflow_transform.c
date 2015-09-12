@@ -341,12 +341,11 @@ static struct interesting_stmts *search_interesting_calls(struct interesting_stm
 	return head;
 }
 
-// Find assignements to structure fields
-static struct interesting_stmts *search_interesting_structs(struct interesting_stmts *head, gassign *assign)
+// Find assignements to structure fields and vardecls
+static struct interesting_stmts *search_interesting_structs_vardecls(struct interesting_stmts *head, gassign *assign)
 {
 	next_interesting_function_t next_node;
-	const_tree lhs;
-	tree rhs1, rhs2;
+	tree rhs1, rhs2, lhs;
 #if BUILDING_GCC_VERSION >= 4006
 	tree rhs3;
 #endif
@@ -354,7 +353,10 @@ static struct interesting_stmts *search_interesting_structs(struct interesting_s
 
 	lhs = gimple_assign_lhs(assign);
 
-	raw_data.decl = get_ref_field(lhs);
+	if (VAR_P(lhs))
+		raw_data.decl = lhs;
+	else
+		raw_data.decl = get_ref_field(lhs);
 	if (raw_data.decl == NULL_TREE)
 		return head;
 	if (DECL_NAME(raw_data.decl) == NULL_TREE)
@@ -363,6 +365,7 @@ static struct interesting_stmts *search_interesting_structs(struct interesting_s
 	raw_data.decl_str = DECL_NAME_POINTER(raw_data.decl);
 	raw_data.num = 0;
 	raw_data.marked = YES_SO_MARK;
+
 	next_node = get_global_next_interesting_function_entry_with_hash(&raw_data);
 	if (next_node && next_node->marked == ERROR_CODE_SO_MARK)
 		return head;
@@ -421,7 +424,12 @@ static void search_interesting_stmts(struct visited *visited)
 				head = search_interesting_calls(head, as_a_gcall(stmt));
 				break;
 			case GIMPLE_ASSIGN:
-				head = search_interesting_structs(head, as_a_gassign(stmt));
+				/* !!! TODO LTO modeban nincs duplikalas a globalis valtozora, mert a tree mergek
+				 * utan mar nem lehet megkulonboztetni attol a globalis valtozotol, aminek a scopeja csak a file
+				 * igy a context nem vardecl lesz, hanem vardecl_filenev. De execute-ban kiirja, ha hianyzik a hash tablabol
+				 * IPA-ban van duplikalas.
+				 */
+				head = search_interesting_structs_vardecls(head, as_a_gassign(stmt));
 				break;
 			default:
 				break;
