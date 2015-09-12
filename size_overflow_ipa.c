@@ -746,6 +746,32 @@ static void collect_all_possible_size_overflow_fns(const_gimple stmt, tree start
 	collect_data_for_execute(parent_next_cnode, children_next_cnode);
 }
 
+static void collect_all_possible_size_overflow_fields_and_vars(const gassign *assign)
+{
+	tree start_var, decl, lhs = gimple_assign_lhs(assign);
+
+	if (VAR_P(lhs))
+		decl = lhs;
+	else
+		decl = get_ref_field(lhs);
+	if (decl == NULL_TREE)
+		return;
+
+	if (get_intentional_attr_type(decl) == MARK_TURN_OFF)
+		return;
+
+	start_var = gimple_assign_rhs1(assign);
+	collect_all_possible_size_overflow_fns(assign, start_var, 0);
+
+	start_var = gimple_assign_rhs2(assign);
+	collect_all_possible_size_overflow_fns(assign, start_var, 0);
+
+#if BUILDING_GCC_VERSION >= 4006
+	start_var = gimple_assign_rhs3(assign);
+	collect_all_possible_size_overflow_fns(assign, start_var, 0);
+#endif
+}
+
 // Find potential next_interesting_function_t parents
 static void handle_cgraph_node(struct cgraph_node *node)
 {
@@ -793,19 +819,9 @@ static void handle_cgraph_node(struct cgraph_node *node)
 				}
 				break;
 			}
-			case GIMPLE_ASSIGN: {
-				const gassign *assign = as_a_const_gassign(stmt);
-
-				start_var = gimple_assign_rhs1(assign);
-				collect_all_possible_size_overflow_fns(assign, start_var, 0);
-				start_var = gimple_assign_rhs2(assign);
-				collect_all_possible_size_overflow_fns(assign, start_var, 0);
-#if BUILDING_GCC_VERSION >= 4006
-				start_var = gimple_assign_rhs3(assign);
-				collect_all_possible_size_overflow_fns(assign, start_var, 0);
-#endif
+			case GIMPLE_ASSIGN:
+				collect_all_possible_size_overflow_fields_and_vars(as_a_const_gassign(stmt));
 				break;
-			}
 			default:
 				break;
 			}

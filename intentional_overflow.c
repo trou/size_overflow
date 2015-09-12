@@ -194,7 +194,7 @@ static const_tree search_field_decl(const_tree comp_ref)
  *  * MARK_NO
  *  * MARK_END_INTENTIONAL
  */
-static enum intentional_mark get_intentional_attr_type(const_tree node)
+enum intentional_mark get_intentional_attr_type(const_tree node)
 {
 	const_tree cur_decl;
 
@@ -230,6 +230,7 @@ static enum intentional_mark get_intentional_attr_type(const_tree node)
 		if (is_end_intentional_intentional_attr(fndecl))
 			return MARK_END_INTENTIONAL;
 	}
+	case FIELD_DECL:
 	case VAR_DECL:
 		if (is_turn_off_intentional_attr(node))
 			return MARK_TURN_OFF;

@@ -200,6 +200,7 @@ extern const struct size_overflow_hash *get_size_overflow_hash_entry(unsigned in
 
 
 // intentional_overflow.c
+extern enum intentional_mark get_intentional_attr_type(const_tree node);
 extern tree get_size_overflow_asm_input(const gasm *stmt);
 extern enum intentional_mark check_intentional_size_overflow_asm_and_attribute(const_tree var);
 extern bool is_size_overflow_insert_check_asm(const gasm *stmt);
