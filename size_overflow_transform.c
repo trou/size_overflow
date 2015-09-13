@@ -436,7 +436,7 @@ static void search_interesting_stmts(struct visited *visited)
 				break;
 			}
 			case GIMPLE_RETURN:
-				if (!next_node_ret)
+				if (!next_node_ret || next_node_ret->marked == ASM_STMT_SO_MARK)
 					continue;
 				first_node = gimple_return_retval(as_a_greturn(stmt));
 				if (first_node == NULL_TREE)
