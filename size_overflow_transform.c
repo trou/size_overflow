@@ -349,6 +349,7 @@ static interesting_stmts_t search_interesting_calls(interesting_stmts_t head, gc
 // Find assignements to structure fields and vardecls
 static interesting_stmts_t search_interesting_structs_vardecls(interesting_stmts_t head, gassign *assign)
 {
+	enum intentional_mark mark;
 	next_interesting_function_t next_node;
 	tree rhs1, rhs2, lhs, decl;
 #if BUILDING_GCC_VERSION >= 4006
@@ -368,6 +369,10 @@ static interesting_stmts_t search_interesting_structs_vardecls(interesting_stmts
 
 	next_node = get_interesting_function_next_node(decl, 0);
 	if (!next_node)
+		return head;
+
+	mark = get_intentional_attr_type(decl);
+	if (mark != MARK_NO)
 		return head;
 
 	rhs1 = gimple_assign_rhs1(assign);
