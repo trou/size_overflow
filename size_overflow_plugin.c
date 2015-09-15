@@ -88,15 +88,13 @@ static tree handle_intentional_overflow_attribute(tree *node, tree __unused name
 	case METHOD_TYPE:
 		arg_count = type_num_arguments(*node);
 		break;
+	case VAR_DECL:
 	case FIELD_DECL:
 		return NULL_TREE;
-	case VAR_DECL:
-		arg_count = type_num_arguments(TREE_TYPE(*node));
-		break;
 	default:
 		*no_add_attrs = true;
 		debug_tree(*node);
-		error("%qE attribute only applies to functions", name);
+		error("%qE attribute only applies to functions, fields or vars", name);
 		return NULL_TREE;
 	}
 
