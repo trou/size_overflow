@@ -381,6 +381,9 @@ static void handle_function(struct walk_use_def_data *use_def_data, tree fndecl,
 	if (DECL_BUILT_IN(fndecl))
 		return;
 
+	if (get_intentional_attr_type(fndecl) == MARK_TURN_OFF)
+		return;
+
 	raw_data.decl = fndecl;
 	raw_data.decl_str = DECL_NAME_POINTER(fndecl);
 	raw_data.marked = NO_SO_MARK;
