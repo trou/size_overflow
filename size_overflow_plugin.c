@@ -202,11 +202,7 @@ static void size_overflow_start_unit(void __unused *gcc_data, void __unused *use
 }
 
 #if BUILDING_GCC_VERSION >= 4009
-#if BUILDING_GCC_VERSION >= 5000
-static bool gate_disable_ubsan_si_overflow()
-#else
 static bool gate_disable_ubsan_si_overflow(void)
-#endif
 {
 	flag_sanitize &= ~SANITIZE_SI_OVERFLOW;
 	return true;
