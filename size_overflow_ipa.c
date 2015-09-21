@@ -195,6 +195,8 @@ next_interesting_function_t get_global_next_interesting_function_entry(struct fn
 
 	head = global_next_interesting_function[raw_data->hash];
 	for (cur_node = head; cur_node; cur_node = cur_node->next) {
+		if (raw_data->marked != ASM_STMT_SO_MARK && cur_node->marked == ASM_STMT_SO_MARK)
+			continue;
 		if (compare_next_interesting_functions(cur_node, raw_data->decl_str, raw_data->context, raw_data->num, &raw_data->error_data_flow))
 			return cur_node;
 	}
