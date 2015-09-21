@@ -1246,6 +1246,9 @@ static unsigned int size_overflow_execute(void)
 	unsigned int i;
 	next_interesting_function_t cur_global;
 
+	if (flag_lto && !in_lto_p)
+		return 0;
+
 	// Collect vardecls and funtions reachable by function pointers
 	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
 		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
