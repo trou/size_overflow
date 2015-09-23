@@ -503,6 +503,9 @@ static void handle_struct_fields(struct walk_use_def_data *use_def_data, const_t
 		gcc_unreachable();
 	}
 
+	if (get_intentional_attr_type(raw_data.decl) == MARK_TURN_OFF)
+		return;
+
 	create_and_append_new_next_interesting_field_var_decl(use_def_data, &raw_data);
 }
 
