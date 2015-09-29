@@ -305,7 +305,7 @@ int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gcc_version 
 		disable_ubsan_si_overflow_pass_info.pass			= make_disable_ubsan_si_overflow_pass();
 		disable_ubsan_si_overflow_pass_info.reference_pass_name		= "ubsan";
 		disable_ubsan_si_overflow_pass_info.ref_pass_instance_number	= 1;
-		disable_ubsan_si_overflow_pass_info.pos_op			= PASS_POS_INSERT_BEFORE;
+		disable_ubsan_si_overflow_pass_info.pos_op			= PASS_POS_REPLACE;
 
 		register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &disable_ubsan_si_overflow_pass_info);
 #endif
