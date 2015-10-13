@@ -387,7 +387,7 @@ static next_interesting_function_t get_interesting_function_next_node(tree decl,
 	if (next_node && next_node->marked != NO_SO_MARK)
 		return next_node;
 
-	so_hash = get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num);
+	so_hash = get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num, SIZE_OVERFLOW);
 	if (so_hash)
 		return get_and_create_next_node_from_global_next_nodes(&raw_data, NULL);
 	return NULL;

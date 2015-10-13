@@ -23,6 +23,9 @@
 #define GLOBAL_NIFN_LEN 65536
 #define NO_HASH 65537
 
+#define SIZE_OVERFLOW true
+#define DISABLE_SIZE_OVERFLOW false
+
 #include "gcc-common.h"
 
 #include <string.h>
@@ -173,7 +176,7 @@ struct size_overflow_hash {
 extern const char *get_orig_decl_name(const_tree decl);
 extern bool is_size_overflow_asm(const_gimple stmt);
 extern void print_missing_function(next_interesting_function_t node);
-extern const struct size_overflow_hash *get_size_overflow_hash_entry_tree(const_tree fndecl, unsigned int argnum);
+extern const struct size_overflow_hash *get_size_overflow_hash_entry_tree(const_tree fndecl, unsigned int argnum, bool hash_table);
 extern unsigned int find_arg_number_tree(const_tree arg, const_tree func);
 extern unsigned int get_decl_hash(const_tree decl, const char *decl_name);
 extern const struct size_overflow_hash *get_size_overflow_hash_entry(unsigned int hash, const char *decl_name, const char *context, unsigned int argnum);

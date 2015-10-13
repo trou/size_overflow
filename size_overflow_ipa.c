@@ -175,6 +175,8 @@ next_interesting_function_t create_new_next_interesting_decl(struct fn_raw_data 
 	raw_data->hash = get_decl_hash(raw_data->decl, raw_data->decl_str);
 	if (raw_data->hash == NO_HASH)
 		return NULL;
+	if (get_size_overflow_hash_entry_tree(raw_data->decl, raw_data->num, DISABLE_SIZE_OVERFLOW))
+		return NULL;
 	if (temporary_skip_these_functions(raw_data))
 		return NULL;
 
@@ -246,7 +248,8 @@ static next_interesting_function_t create_orig_next_node_for_a_clone(struct fn_r
 
 	orig_raw_data.marked = clone_raw_data->marked;
 	orig_next_node = create_new_next_interesting_decl(&orig_raw_data, NULL);
-	gcc_assert(orig_next_node);
+	if (!orig_next_node)
+		return NULL;
 
 	add_to_global_next_interesting_function(orig_next_node);
 	return orig_next_node;

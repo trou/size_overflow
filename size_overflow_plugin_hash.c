@@ -20,6 +20,7 @@
 #include "size_overflow.h"
 
 #include "size_overflow_hash.h"
+#include "disable_size_overflow_hash.h"
 #include "size_overflow_hash_aux.h"
 
 static const_tree get_function_type(const_tree decl)
@@ -231,6 +232,17 @@ const char *get_orig_decl_name(const_tree decl)
 	return xstrndup(name, len);
 }
 
+const struct size_overflow_hash *get_disable_size_overflow_hash_entry(unsigned int hash, const char *decl_name, const char *context, unsigned int argnum)
+{
+	const struct size_overflow_hash *entry, *entry_node;
+
+	entry = disable_size_overflow_hash[hash];
+	entry_node = get_proper_hash_chain(entry, decl_name, context);
+	if (entry_node && entry_node->param & (1U << argnum))
+		return entry_node;
+	return NULL;
+}
+
 const struct size_overflow_hash *get_size_overflow_hash_entry(unsigned int hash, const char *decl_name, const char *context, unsigned int argnum)
 {
 	const struct size_overflow_hash *entry, *entry_node;
@@ -247,7 +259,7 @@ const struct size_overflow_hash *get_size_overflow_hash_entry(unsigned int hash,
 	return NULL;
 }
 
-const struct size_overflow_hash *get_size_overflow_hash_entry_tree(const_tree fndecl, unsigned int argnum)
+const struct size_overflow_hash *get_size_overflow_hash_entry_tree(const_tree fndecl, unsigned int argnum, bool hash_table)
 {
 	const_tree orig_decl;
 	unsigned int orig_argnum, hash;
@@ -272,7 +284,10 @@ const struct size_overflow_hash *get_size_overflow_hash_entry_tree(const_tree fn
 	context = get_decl_context(orig_decl);
 	if (!context)
 		return NULL;
-	return get_size_overflow_hash_entry(hash, decl_name, context, orig_argnum);
+
+	if (hash_table == SIZE_OVERFLOW)
+		return get_size_overflow_hash_entry(hash, decl_name, context, orig_argnum);
+	return get_disable_size_overflow_hash_entry(hash, decl_name, context, orig_argnum);
 }
 
 unsigned int find_arg_number_tree(const_tree arg, const_tree func)
