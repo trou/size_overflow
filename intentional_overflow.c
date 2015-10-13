@@ -975,6 +975,10 @@ bool is_intentional_truncation(gassign *assign)
 
 	def_def_rhs = gimple_assign_rhs1(def_stmt);
 	// structure field read
+#if BUILDING_GCC_VERSION == 4005
+	return TREE_CODE(def_def_rhs) == INDIRECT_REF;
+#else
 	return TREE_CODE(def_def_rhs) == MEM_REF;
+#endif
 }
 
