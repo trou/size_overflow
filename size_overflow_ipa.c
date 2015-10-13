@@ -62,7 +62,7 @@ static bool is_error_code_const(const_tree node)
 {
 	enum machine_mode mode;
 
-	if (!flag_lto)
+	if (!in_lto_p)
 		return false;
 
 	if (!is_gimple_constant(node))
@@ -83,7 +83,7 @@ bool is_default_error_data_flow(error_code_t error_code)
 
 static bool same_error_data_flow(error_code_t error_data_flow_old, error_code_t error_data_flow_new)
 {
-	if (!flag_lto)
+	if (!in_lto_p)
 		return true;
 
 	if (error_data_flow_old->bin_op != error_data_flow_new->bin_op)
