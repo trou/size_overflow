@@ -262,7 +262,8 @@ static gimple handle_error_codes(greturn *ret)
 	cast_def_rhs = gimple_assign_rhs1(cast_def);
 	if (TYPE_MODE(TREE_TYPE(cast_def_lhs)) != TYPE_MODE(TREE_TYPE(cast_def_rhs)))
 		return ret;
-	gcc_assert(TYPE_UNSIGNED(TREE_TYPE(cast_def_lhs)) != TYPE_UNSIGNED(TREE_TYPE(cast_def_rhs)));
+	if (TYPE_UNSIGNED(TREE_TYPE(cast_def_lhs)) == TYPE_UNSIGNED(TREE_TYPE(cast_def_rhs)))
+		return ret;
 
 	phi_def = get_def_stmt(cast_def_rhs);
 	if (!phi_def || gimple_code(phi_def) != GIMPLE_PHI)
