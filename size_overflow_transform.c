@@ -198,7 +198,7 @@ static void handle_interesting_stmt(struct visited *visited, interesting_stmts_t
 static next_interesting_function_t get_interesting_function_next_node(tree decl, unsigned int num)
 {
 	next_interesting_function_t next_node;
-	const struct size_overflow_hash *so_hash, *disable_so_hash;
+	const struct size_overflow_hash *so_hash;
 	struct fn_raw_data raw_data;
 
 	raw_data.decl = decl;
@@ -207,16 +207,10 @@ static next_interesting_function_t get_interesting_function_next_node(tree decl,
 	raw_data.marked = YES_SO_MARK;
 
 	next_node = get_global_next_interesting_function_entry_with_hash(&raw_data);
-	if (next_node && next_node->marked == ERROR_CODE_SO_MARK)
-		return NULL;
 	if (next_node && next_node->marked != NO_SO_MARK)
 		return next_node;
 
-	disable_so_hash = get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num, ONLY_DISABLE_SO);
-	if (disable_so_hash != NULL)
-		return NULL;
-
-	so_hash = get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num, ONLY_SO);
+	so_hash = get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num);
 	if (so_hash)
 		return get_and_create_next_node_from_global_next_nodes(&raw_data, NULL);
 	return NULL;
