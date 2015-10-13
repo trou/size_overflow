@@ -237,6 +237,8 @@ extern tree handle_fnptr_assign(const_gimple stmt);
 
 
 // size_overflow_transform_core.c
+extern tree cast_to_new_size_overflow_type(struct visited *visited, gimple stmt, tree rhs, tree size_overflow_type, bool before);
+extern tree get_size_overflow_type(struct visited *visited, const_gimple stmt, const_tree node);
 extern tree expand(struct visited *visited, next_interesting_function_t expand_from, tree lhs);
 extern void check_size_overflow(next_interesting_function_t expand_from, gimple stmt, tree size_overflow_type, tree cast_rhs, tree rhs, bool before);
 extern tree dup_assign(struct visited *visited, gassign *oldstmt, const_tree node, tree rhs1, tree rhs2, tree __unused rhs3);
