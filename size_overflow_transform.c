@@ -30,7 +30,7 @@ struct interesting_stmts {
 	unsigned int num;
 };
 
-static tree cast_to_orig_type(struct visited *visited, gimple stmt, const_tree orig_node, tree new_node, unsigned int num)
+static tree cast_to_orig_type(struct visited *visited, gimple stmt, const_tree orig_node, tree new_node)
 {
 	gimple def_stmt;
 	const_gimple assign;
@@ -101,7 +101,7 @@ static void change_field_write_rhs(gassign *assign, const_tree orig_rhs, tree ne
 	gcc_unreachable();
 }
 
-static void change_phi_arg(gphi *phi, const_tree orig_node, tree new_node, unsigned int num)
+static void change_phi_arg(gphi *phi, tree new_node, unsigned int num)
 {
 	unsigned int i;
 	location_t loc = gimple_location(phi);
@@ -114,7 +114,7 @@ static void change_phi_arg(gphi *phi, const_tree orig_node, tree new_node, unsig
 
 static void change_orig_node(struct visited *visited, gimple stmt, const_tree orig_node, tree new_node, unsigned int num)
 {
-	tree cast_lhs = cast_to_orig_type(visited, stmt, orig_node, new_node, num);
+	tree cast_lhs = cast_to_orig_type(visited, stmt, orig_node, new_node);
 
 	switch (gimple_code(stmt)) {
 	case GIMPLE_RETURN:
@@ -130,7 +130,7 @@ static void change_orig_node(struct visited *visited, gimple stmt, const_tree or
 		change_field_write_rhs(as_a_gassign(stmt), orig_node, cast_lhs);
 		break;
 	case GIMPLE_PHI:
-		change_phi_arg(as_a_gphi(stmt), orig_node, cast_lhs, num);
+		change_phi_arg(as_a_gphi(stmt), cast_lhs, num);
 		break;
 	default:
 		debug_gimple_stmt(stmt);
@@ -323,7 +323,7 @@ static bool handle_error_code_stmt(struct visited *visited, interesting_stmts_t 
 
 	phi = as_a_gphi(cur->first_stmt);
 	for (i = 0; i < gimple_phi_num_args(phi); i++) {
-		tree new_arg, arg, ret_type, new_phi_arg;
+		tree new_arg, arg, new_phi_arg;
 		gimple def_stmt, def_new_phi_arg;
 
 		arg = gimple_phi_arg_def(phi, i);
