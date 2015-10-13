@@ -136,6 +136,32 @@ next_interesting_function_t create_new_next_interesting_entry(struct fn_raw_data
 	return new_node;
 }
 
+// Ignore these functions to not explode coverage (+strncmp+fndecl+3+35130+)
+static bool temporary_skip_these_functions(struct fn_raw_data *raw_data)
+{
+	if (raw_data->hash == 35130 && !strcmp(raw_data->decl_str, "strncmp"))
+		return true;
+	if (raw_data->hash == 46193 && !strcmp(raw_data->decl_str, "strnlen"))
+		return true;
+	if (raw_data->hash == 43267 && !strcmp(raw_data->decl_str, "strncpy"))
+		return true;
+	if (raw_data->hash == 10300 && !strcmp(raw_data->decl_str, "strncpy_from_user"))
+		return true;
+	if (raw_data->hash == 26117 && !strcmp(raw_data->decl_str, "memchr"))
+		return true;
+	if (raw_data->hash == 16203 && !strcmp(raw_data->decl_str, "memchr_inv"))
+		return true;
+	if (raw_data->hash == 24269 && !strcmp(raw_data->decl_str, "memcmp"))
+		return true;
+	if (raw_data->hash == 60390 && !strcmp(raw_data->decl_str, "memcpy"))
+		return true;
+	if (raw_data->hash == 25040 && !strcmp(raw_data->decl_str, "memmove"))
+		return true;
+	if (raw_data->hash == 29763 && !strcmp(raw_data->decl_str, "memset"))
+		return true;
+	return false;
+}
+
 // Create the main data structure
 next_interesting_function_t create_new_next_interesting_decl(struct fn_raw_data *raw_data, next_interesting_function_t orig_next_node)
 {
@@ -148,6 +174,8 @@ next_interesting_function_t create_new_next_interesting_decl(struct fn_raw_data 
 
 	raw_data->hash = get_decl_hash(raw_data->decl, raw_data->decl_str);
 	if (raw_data->hash == NO_HASH)
+		return NULL;
+	if (temporary_skip_these_functions(raw_data))
 		return NULL;
 
 	gcc_assert(raw_data->num <= MAX_PARAM);
