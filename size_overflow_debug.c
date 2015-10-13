@@ -63,16 +63,25 @@ unsigned int __unused size_overflow_dump_function(FILE *file, struct cgraph_node
 
 static void __unused print_next_interesting_function(next_interesting_function_t node)
 {
-	unsigned int i;
+	unsigned int i, children_len;
 	next_interesting_function_t cur;
 
 	if (!node)
 		return;
 
+#if BUILDING_GCC_VERSION <= 4007
+	if (VEC_empty(next_interesting_function_t, node->children))
+		children_len = 0;
+	else
+		children_len = VEC_length(next_interesting_function_t, node->children);
+#else
+	children_len = vec_safe_length(node->children);
+#endif
+
 	fprintf(stderr, "print_next_interesting_function: ptr: %p, ", node);
 	fprintf(stderr, "decl_name: %s, ", node->decl_name);
 
-	fprintf(stderr, "num: %u marked: %s context: %s\n", node->num, print_so_mark_name(node->marked), node->context);
+	fprintf(stderr, "num: %u marked: %s context: %s children len: %u\n", node->num, print_so_mark_name(node->marked), node->context, children_len);
 #if BUILDING_GCC_VERSION <= 4007
 	if (VEC_empty(next_interesting_function_t, node->children))
 		return;
