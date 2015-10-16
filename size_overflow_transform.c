@@ -19,17 +19,6 @@
 
 #include "size_overflow.h"
 
-struct interesting_stmts;
-typedef struct interesting_stmts * interesting_stmts_t;
-
-struct interesting_stmts {
-	struct interesting_stmts *next;
-	next_interesting_function_t next_node;
-	gimple first_stmt;
-	tree orig_node;
-	unsigned int num;
-};
-
 static tree cast_to_orig_type(struct visited *visited, gimple stmt, const_tree orig_node, tree new_node)
 {
 	gimple def_stmt;
@@ -364,12 +353,12 @@ static void handle_interesting_stmt(struct visited *visited, interesting_stmts_t
 		if (handle_error_code_stmt(visited, cur))
 			continue;
 
-		new_node = expand(visited, cur->next_node, cur->orig_node);
+		new_node = expand(visited, cur, cur->orig_node);
 		if (new_node == NULL_TREE)
 			continue;
 
 		change_orig_node(visited, cur->first_stmt, cur->orig_node, new_node, cur->num);
-		check_size_overflow(cur->next_node, cur->first_stmt, TREE_TYPE(new_node), new_node, cur->orig_node, BEFORE_STMT);
+		check_size_overflow(cur, cur->first_stmt, TREE_TYPE(new_node), new_node, cur->orig_node, BEFORE_STMT);
 	}
 }
 

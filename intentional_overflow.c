@@ -588,7 +588,7 @@ static tree change_assign_rhs(struct visited *visited, gassign *stmt, const_tree
 	return get_lhs(assign);
 }
 
-tree handle_intentional_overflow(struct visited *visited, next_interesting_function_t expand_from, bool check_overflow, gassign *stmt, tree change_rhs, tree new_rhs2)
+tree handle_intentional_overflow(struct visited *visited, interesting_stmts_t expand_from, bool check_overflow, gassign *stmt, tree change_rhs, tree new_rhs2)
 {
 	tree new_rhs, orig_rhs;
 	void (*gimple_assign_set_rhs)(gimple, tree);
@@ -722,7 +722,7 @@ static tree get_def_stmt_rhs(struct visited *visited, const_tree var)
 	}
 }
 
-tree handle_integer_truncation(struct visited *visited, next_interesting_function_t expand_from, const_tree lhs)
+tree handle_integer_truncation(struct visited *visited, interesting_stmts_t expand_from, const_tree lhs)
 {
 	tree new_rhs1, new_rhs2;
 	tree new_rhs1_def_stmt_rhs1, new_rhs2_def_stmt_rhs1, new_lhs;
