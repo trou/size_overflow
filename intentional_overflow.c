@@ -157,7 +157,7 @@ static bool is_yes_intentional_attr(const_tree decl, unsigned int argnum)
 static void print_missing_intentional(enum intentional_mark callee_attr, enum intentional_mark caller_attr, const_tree decl, unsigned int argnum)
 {
 	const struct size_overflow_hash *hash;
-	location_t loc;
+//	location_t loc;
 
 	if (caller_attr == MARK_NO || caller_attr == MARK_END_INTENTIONAL || caller_attr == MARK_TURN_OFF)
 		return;
@@ -169,8 +169,9 @@ static void print_missing_intentional(enum intentional_mark callee_attr, enum in
 	if (!hash)
 		return;
 
-	loc = DECL_SOURCE_LOCATION(decl);
-	inform(loc, "The intentional_overflow attribute is missing from +%s+%u+", DECL_NAME_POINTER(decl), argnum);
+// !!!
+//	loc = DECL_SOURCE_LOCATION(decl);
+//	inform(loc, "The intentional_overflow attribute is missing from +%s+%u+", DECL_NAME_POINTER(decl), argnum);
 }
 
 // Get the field decl of a component ref for intentional_overflow checking
