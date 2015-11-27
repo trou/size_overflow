@@ -373,6 +373,9 @@ enum intentional_mark check_intentional_attribute(const_gimple stmt, unsigned in
 	// handle MARK_TURN_OFF early on the caller
 	if (is_turn_off_intentional_attr(orig_cur_fndecl))
 		return MARK_TURN_OFF;
+	// handle MARK_END_INTENTIONAL on the caller
+	if (is_end_intentional_intentional_attr(orig_cur_fndecl))
+		return MARK_END_INTENTIONAL;
 
 	switch (gimple_code(stmt)) {
 	case GIMPLE_RETURN:
