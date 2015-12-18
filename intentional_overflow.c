@@ -205,9 +205,6 @@ enum intentional_mark get_intentional_attr_type(const_tree node)
 	switch (TREE_CODE(node)) {
 	case COMPONENT_REF:
 		cur_decl = search_field_decl(node);
-		// !!! temporarily ignore bitfield types
-		if (DECL_BIT_FIELD_TYPE(cur_decl))
-			return MARK_YES;
 		if (is_turn_off_intentional_attr(cur_decl))
 			return MARK_TURN_OFF;
 		if (is_end_intentional_intentional_attr(cur_decl))
@@ -236,9 +233,6 @@ enum intentional_mark get_intentional_attr_type(const_tree node)
 		break;
 	}
 	case FIELD_DECL:
-		// !!! temporarily ignore bitfield types
-		if (DECL_BIT_FIELD_TYPE(node))
-			return MARK_YES;
 	case VAR_DECL:
 		if (is_end_intentional_intentional_attr(node))
 			return MARK_END_INTENTIONAL;
@@ -1029,4 +1023,33 @@ bool neg_short_add_intentional_overflow(gassign *unary_stmt)
 		return true;
 	add_rhs2 = gimple_assign_rhs2(add_stmt);
 	return check_add_stmt(add_rhs2);
+}
+
+/* True:
+ * _25 = (<unnamed-unsigned:1>) _24;
+ * r_5(D)->stereo = _25;
+ */
+bool is_bitfield_unnamed_cast(const_tree decl, gassign *assign)
+{
+	const_tree rhs, type;
+	gimple def_stmt;
+
+	if (TREE_CODE(decl) != FIELD_DECL)
+		return false;
+	if (!DECL_BIT_FIELD_TYPE(decl))
+		return false;
+	if (gimple_num_ops(assign) != 2)
+		return false;
+
+	rhs = gimple_assign_rhs1(assign);
+	if (is_gimple_constant(rhs))
+		return false;
+	type = TREE_TYPE(rhs);
+	if (TREE_CODE(type) == BOOLEAN_TYPE)
+		return false;
+
+	def_stmt = get_def_stmt(rhs);
+	if (!gimple_assign_cast_p(def_stmt))
+		return false;
+	return TYPE_PRECISION(type) < CHAR_TYPE_SIZE;
 }
