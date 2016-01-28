@@ -1053,3 +1053,64 @@ bool is_bitfield_unnamed_cast(const_tree decl, gassign *assign)
 		return false;
 	return TYPE_PRECISION(type) < CHAR_TYPE_SIZE;
 }
+
+static bool is_mult_const(const_tree lhs)
+{
+	const_gimple def_stmt;
+	const_tree rhs1, rhs2;
+
+	def_stmt = get_def_stmt(lhs);
+	if (!def_stmt || gimple_assign_rhs_code(def_stmt) != MULT_EXPR)
+		return false;
+
+	rhs1 = gimple_assign_rhs1(def_stmt);
+	rhs2 = gimple_assign_rhs2(def_stmt);
+	if (is_gimple_constant(rhs1))
+		return !is_lt_signed_type_max(rhs1);
+	else if (is_gimple_constant(rhs2))
+		return !is_lt_signed_type_max(rhs2);
+	return false;
+}
+
+/* True:
+ * fs/cifs/file.c cifs_write_from_iter()
+ * u32 = u64 - (u64 - constant) * constant
+ * wdata->tailsz = cur_len - (nr_pages - 1) * PAGE_SIZE;
+ *
+ * _51 = _50 * 4294963200;
+ * _52 = _49 + _51;
+ * _53 = _52 + 4096;
+ */
+
+bool uconst_neg_intentional_overflow(struct visited *visited, const gassign *stmt)
+{
+	const_gimple def_stmt;
+	const_tree noconst_rhs;
+	tree rhs1, rhs2;
+
+	// _53 = _52 + const;
+	if (gimple_assign_rhs_code(stmt) != PLUS_EXPR)
+		return false;
+	rhs1 = gimple_assign_rhs1(stmt);
+	rhs2 = gimple_assign_rhs2(stmt);
+	if (is_gimple_constant(rhs1))
+		noconst_rhs = rhs2;
+	else if (is_gimple_constant(rhs2))
+		noconst_rhs = rhs1;
+	else
+		return false;
+	def_stmt = get_def_stmt(noconst_rhs);
+
+	// _52 = _49 + _51;
+	if (!def_stmt)
+		return false;
+	if (gimple_assign_rhs_code(def_stmt) != PLUS_EXPR)
+		return false;
+	rhs1 = gimple_assign_rhs1(def_stmt);
+	rhs2 = gimple_assign_rhs2(def_stmt);
+	if (is_gimple_constant(rhs1) || is_gimple_constant(rhs2))
+		return false;
+
+	// _51 = _50 * gt signed type max;
+	return is_mult_const(rhs1) || is_mult_const(rhs2);
+}
