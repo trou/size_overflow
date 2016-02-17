@@ -1082,7 +1082,7 @@ static bool is_mult_const(const_tree lhs)
  * _53 = _52 + 4096;
  */
 
-bool uconst_neg_intentional_overflow(struct visited *visited, const gassign *stmt)
+bool uconst_neg_intentional_overflow(const gassign *stmt)
 {
 	const_gimple def_stmt;
 	const_tree noconst_rhs;
