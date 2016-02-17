@@ -203,7 +203,7 @@ extern enum intentional_overflow_type add_mul_intentional_overflow(const gassign
 extern void unsigned_signed_cast_intentional_overflow(struct visited *visited, gassign *stmt);
 extern bool neg_short_add_intentional_overflow(gassign *stmt);
 extern bool is_bitfield_unnamed_cast(const_tree decl, gassign *assign);
-extern bool uconst_neg_intentional_overflow(struct visited *visited, const gassign *stmt);
+extern bool uconst_neg_intentional_overflow(const gassign *stmt);
 
 
 // insert_size_overflow_asm.c
