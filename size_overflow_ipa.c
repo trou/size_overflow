@@ -34,7 +34,7 @@ struct cgraph_node *get_cnode(const_tree fndecl)
 {
 	gcc_assert(TREE_CODE(fndecl) == FUNCTION_DECL);
 #if BUILDING_GCC_VERSION <= 4005
-	return cgraph_get_node((tree)fndecl);
+	return cgraph_get_node(CONST_CAST_TREE(fndecl));
 #else
 	return cgraph_get_node(fndecl);
 #endif
