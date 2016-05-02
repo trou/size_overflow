@@ -1116,3 +1116,51 @@ bool uconst_neg_intentional_overflow(const gassign *stmt)
 	// _51 = _50 * gt signed type max;
 	return is_mult_const(rhs1) || is_mult_const(rhs2);
 }
+
+/* True:
+ * drivers/net/ethernet/via/via-velocity.c velocity_rx_refill()
+ * u16 = cpu_to_le16(s32) | const
+ * rd->size = cpu_to_le16(vptr->rx.buf_sz) | RX_INTEN;
+ *
+ * _36 = (signed short) _35;
+ * _37 = _36 | -32768;
+ * _38 = (short unsigned int) _37;
+ */
+
+bool short_or_neg_const_ushort(gassign *stmt)
+{
+	const_tree rhs, lhs_type, rhs_type;
+	const_tree def_rhs1, def_rhs2;
+	const_gimple def_stmt;
+	gimple def_def_stmt = NULL;
+
+	if (!gimple_assign_cast_p(stmt))
+		return false;
+
+	// _38 = (short unsigned int) _37;
+	lhs_type = TREE_TYPE(gimple_assign_lhs(stmt));
+	if (!TYPE_UNSIGNED(lhs_type))
+		return false;
+	if (TYPE_MODE(lhs_type) != HImode)
+		return false;
+	rhs = gimple_assign_rhs1(stmt);
+	rhs_type = TREE_TYPE(rhs);
+	if (TYPE_UNSIGNED(rhs_type))
+		return false;
+	if (TYPE_MODE(rhs_type) != HImode)
+		return false;
+
+	// _37 = _36 | -32768;
+	def_stmt = get_def_stmt(rhs);
+	if (!def_stmt || gimple_assign_rhs_code(def_stmt) != BIT_IOR_EXPR)
+		return false;
+	def_rhs1 = gimple_assign_rhs1(def_stmt);
+	def_rhs2 = gimple_assign_rhs2(def_stmt);
+	if (is_gimple_constant(def_rhs1) && !is_gt_zero(def_rhs1))
+		def_def_stmt = get_def_stmt(def_rhs2);
+	else if (is_gimple_constant(def_rhs2) && !is_gt_zero(def_rhs2))
+		def_def_stmt = get_def_stmt(def_rhs1);
+
+	// _36 = (signed short) _35;
+	return def_def_stmt && gimple_assign_cast_p(def_def_stmt);
+}

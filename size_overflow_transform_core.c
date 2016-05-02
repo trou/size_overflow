@@ -550,6 +550,11 @@ void check_size_overflow(interesting_stmts_t expand_from, gimple stmt, tree size
 
 	gcc_assert(TREE_CODE(rhs_type) == INTEGER_TYPE || TREE_CODE(rhs_type) == ENUMERAL_TYPE);
 
+
+#if BUILDING_GCC_VERSION >= 5000
+	if (is_gimple_assign(stmt) && short_or_neg_const_ushort(as_a_gassign(stmt)))
+		return;
+#endif
 	if (is_const_plus_unsigned_signed_truncation(rhs))
 		return;
 	if (is_gimple_assign(stmt) && neg_short_add_intentional_overflow(as_a_gassign(stmt)))
@@ -721,6 +726,13 @@ static tree handle_unary_rhs(struct visited *visited, interesting_stmts_t expand
 
 	if (pointer_set_contains(visited->no_cast_check, stmt))
 		return dup_assign(visited, stmt, lhs, new_rhs1, NULL_TREE, NULL_TREE);
+
+#if BUILDING_GCC_VERSION >= 5000
+	if (short_or_neg_const_ushort(stmt)) {
+		pointer_set_insert(visited->no_cast_check, stmt);
+		return dup_assign(visited, stmt, lhs, new_rhs1, NULL_TREE, NULL_TREE);
+	}
+#endif
 
 	rhs_code = gimple_assign_rhs_code(stmt);
 	if (rhs_code == BIT_NOT_EXPR || rhs_code == NEGATE_EXPR) {

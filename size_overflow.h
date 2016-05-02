@@ -204,6 +204,7 @@ extern void unsigned_signed_cast_intentional_overflow(struct visited *visited, g
 extern bool neg_short_add_intentional_overflow(gassign *stmt);
 extern bool is_bitfield_unnamed_cast(const_tree decl, gassign *assign);
 extern bool uconst_neg_intentional_overflow(const gassign *stmt);
+extern bool short_or_neg_const_ushort(gassign *stmt);
 
 
 // insert_size_overflow_asm.c
