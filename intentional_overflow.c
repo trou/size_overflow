@@ -592,7 +592,7 @@ static tree change_assign_rhs(struct visited *visited, gassign *stmt, const_tree
 	return get_lhs(assign);
 }
 
-tree handle_intentional_overflow(struct visited *visited, interesting_stmts_t expand_from, bool check_overflow, gassign *stmt, tree change_rhs, tree new_rhs2)
+tree handle_intentional_overflow(interesting_stmts_t expand_from, bool check_overflow, gassign *stmt, tree change_rhs, tree new_rhs2)
 {
 	tree new_rhs, orig_rhs;
 	void (*gimple_assign_set_rhs)(gimple, tree);
@@ -601,10 +601,10 @@ tree handle_intentional_overflow(struct visited *visited, interesting_stmts_t ex
 	tree lhs = gimple_assign_lhs(stmt);
 
 	if (!check_overflow)
-		return create_assign(visited, stmt, lhs, AFTER_STMT);
+		return create_assign(expand_from->visited, stmt, lhs, AFTER_STMT);
 
 	if (change_rhs == NULL_TREE)
-		return create_assign(visited, stmt, lhs, AFTER_STMT);
+		return create_assign(expand_from->visited, stmt, lhs, AFTER_STMT);
 
 	if (new_rhs2 == NULL_TREE) {
 		orig_rhs = rhs1;
@@ -616,11 +616,11 @@ tree handle_intentional_overflow(struct visited *visited, interesting_stmts_t ex
 
 	check_size_overflow(expand_from, stmt, TREE_TYPE(change_rhs), change_rhs, orig_rhs, BEFORE_STMT);
 
-	new_rhs = change_assign_rhs(visited, stmt, orig_rhs, change_rhs);
+	new_rhs = change_assign_rhs(expand_from->visited, stmt, orig_rhs, change_rhs);
 	gimple_assign_set_rhs(stmt, new_rhs);
 	update_stmt(stmt);
 
-	return create_assign(visited, stmt, lhs, AFTER_STMT);
+	return create_assign(expand_from->visited, stmt, lhs, AFTER_STMT);
 }
 
 static bool is_subtraction_special(struct visited *visited, const gassign *stmt)
@@ -726,7 +726,7 @@ static tree get_def_stmt_rhs(struct visited *visited, const_tree var)
 	}
 }
 
-tree handle_integer_truncation(struct visited *visited, interesting_stmts_t expand_from, const_tree lhs)
+tree handle_integer_truncation(interesting_stmts_t expand_from, const_tree lhs)
 {
 	tree new_rhs1, new_rhs2;
 	tree new_rhs1_def_stmt_rhs1, new_rhs2_def_stmt_rhs1, new_lhs;
@@ -734,28 +734,28 @@ tree handle_integer_truncation(struct visited *visited, interesting_stmts_t expa
 	tree rhs1 = gimple_assign_rhs1(stmt);
 	tree rhs2 = gimple_assign_rhs2(stmt);
 
-	if (!is_subtraction_special(visited, stmt))
+	if (!is_subtraction_special(expand_from->visited, stmt))
 		return NULL_TREE;
 
-	new_rhs1 = expand(visited, expand_from, rhs1);
-	new_rhs2 = expand(visited, expand_from, rhs2);
+	new_rhs1 = expand(expand_from, rhs1);
+	new_rhs2 = expand(expand_from, rhs2);
 
-	new_rhs1_def_stmt_rhs1 = get_def_stmt_rhs(visited, new_rhs1);
-	new_rhs2_def_stmt_rhs1 = get_def_stmt_rhs(visited, new_rhs2);
+	new_rhs1_def_stmt_rhs1 = get_def_stmt_rhs(expand_from->visited, new_rhs1);
+	new_rhs2_def_stmt_rhs1 = get_def_stmt_rhs(expand_from->visited, new_rhs2);
 
 	if (new_rhs1_def_stmt_rhs1 == NULL_TREE || new_rhs2_def_stmt_rhs1 == NULL_TREE)
 		return NULL_TREE;
 
 	if (!types_compatible_p(TREE_TYPE(new_rhs1_def_stmt_rhs1), TREE_TYPE(new_rhs2_def_stmt_rhs1))) {
-		new_rhs1_def_stmt_rhs1 = cast_to_TI_type(visited, stmt, new_rhs1_def_stmt_rhs1);
-		new_rhs2_def_stmt_rhs1 = cast_to_TI_type(visited, stmt, new_rhs2_def_stmt_rhs1);
+		new_rhs1_def_stmt_rhs1 = cast_to_TI_type(expand_from->visited, stmt, new_rhs1_def_stmt_rhs1);
+		new_rhs2_def_stmt_rhs1 = cast_to_TI_type(expand_from->visited, stmt, new_rhs2_def_stmt_rhs1);
 	}
 
-	assign = create_binary_assign(visited, MINUS_EXPR, stmt, new_rhs1_def_stmt_rhs1, new_rhs2_def_stmt_rhs1);
+	assign = create_binary_assign(expand_from->visited, MINUS_EXPR, stmt, new_rhs1_def_stmt_rhs1, new_rhs2_def_stmt_rhs1);
 	new_lhs = gimple_assign_lhs(assign);
 	check_size_overflow(expand_from, assign, TREE_TYPE(new_lhs), new_lhs, rhs1, AFTER_STMT);
 
-	return dup_assign(visited, stmt, lhs, new_rhs1, new_rhs2, NULL_TREE);
+	return dup_assign(expand_from->visited, stmt, lhs, new_rhs1, new_rhs2, NULL_TREE);
 }
 
 bool is_a_neg_overflow(const gassign *stmt, const_tree rhs)
