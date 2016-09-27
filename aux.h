@@ -31,7 +31,7 @@
 #define PARAM30 (1U << 30)
 #define PARAM31 (1U << 31)
 
-const struct size_overflow_hash * const size_overflow_hash_aux[65536] = {
+const struct size_overflow_hash * const aux_hash[65536] = {
 	[0]	= NULL,
 	[1]	= NULL,
 	[2]	= NULL,
