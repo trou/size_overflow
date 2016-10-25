@@ -177,7 +177,7 @@ next_interesting_function_t create_new_next_interesting_decl(struct fn_raw_data 
 	raw_data->hash = get_decl_hash(raw_data->decl, raw_data->decl_str);
 	if (raw_data->hash == NO_HASH)
 		return NULL;
-	if (get_size_overflow_hash_entry_tree(raw_data->decl, raw_data->num, DISABLE_SIZE_OVERFLOW, raw_data->decl_type))
+	if (get_size_overflow_hash_entry_tree(raw_data->decl, raw_data->num, DISABLE_SIZE_OVERFLOW))
 		return NULL;
 	if (temporary_skip_these_functions(raw_data))
 		return NULL;
@@ -886,7 +886,7 @@ static bool already_in_the_hashtable(next_interesting_function_t next_node)
 {
 	if (next_node->orig_next_node)
 		next_node = next_node->orig_next_node;
-	return get_size_overflow_hash_entry(next_node->hash, next_node->decl_name, next_node->context, next_node->num, next_node->decl_type) != NULL;
+	return get_size_overflow_hash_entry(next_node->hash, next_node->decl_name, next_node->context, next_node->num) != NULL;
 }
 
 // Propagate the size_overflow marks up the use-def chains
@@ -1122,7 +1122,7 @@ static void walk_marked_functions(next_interesting_function_set *visited, next_i
 		case SO_FUNCTION:
 		case SO_VAR:
 			break;
-		case SO_NONE:
+		default:
 			gcc_unreachable();
 		}
 

@@ -400,12 +400,12 @@ static next_interesting_function_t get_interesting_function_next_node(tree decl,
 			if (check_fnptrs)
 				return next_node;
 			return NULL;
-		case SO_NONE:
+		default:
 			gcc_unreachable();
 		}
 	}
 
-	so_hash = get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num, SIZE_OVERFLOW, SO_NONE);
+	so_hash = get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num, SIZE_OVERFLOW);
 	if (so_hash)
 		return get_and_create_next_node_from_global_next_nodes(&raw_data, NULL);
 	return NULL;
@@ -436,8 +436,9 @@ tree handle_fnptr_assign(const_gimple stmt)
 	switch (rhs_code) {
 	case ADDR_EXPR:
 		op0 = TREE_OPERAND(rhs, 0);
-		gcc_assert(TREE_CODE(op0) == FUNCTION_DECL);
-		return op0;
+		if (TREE_CODE(op0) == FUNCTION_DECL)
+			return op0;
+		return NULL_TREE;
 	case COMPONENT_REF:
 		break;
 	// TODO skip array_ref for now

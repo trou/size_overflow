@@ -59,7 +59,7 @@ struct interesting_stmts;
 typedef struct interesting_stmts * interesting_stmts_t;
 
 enum decl_type {
-	SO_FUNCTION, SO_VAR, SO_FIELD, SO_FUNCTION_POINTER, SO_NONE
+	SO_FUNCTION, SO_VAR, SO_FIELD, SO_FUNCTION_POINTER
 };
 
 // Store data associated with the next_interesting_function_t entry
@@ -187,8 +187,8 @@ struct size_overflow_hash {
 extern const char *get_orig_decl_name(const_tree decl);
 extern bool is_size_overflow_asm(const_gimple stmt);
 extern void print_missing_function(next_interesting_function_t node);
-extern const struct size_overflow_hash *get_size_overflow_hash_entry(unsigned int hash, const char *decl_name, const char *context, unsigned int argnum, enum decl_type decl_type);
-extern const struct size_overflow_hash *get_size_overflow_hash_entry_tree(const_tree fndecl, unsigned int argnum, bool hash_table, enum decl_type decl_type);
+extern const struct size_overflow_hash *get_size_overflow_hash_entry(unsigned int hash, const char *decl_name, const char *context, unsigned int argnum);
+extern const struct size_overflow_hash *get_size_overflow_hash_entry_tree(const_tree fndecl, unsigned int argnum, bool hash_table);
 extern unsigned int find_arg_number_tree(const_tree arg, const_tree func);
 extern unsigned int get_decl_hash(const_tree decl, const char *decl_name);
 extern const char *get_decl_type_str(next_interesting_function_t node);
