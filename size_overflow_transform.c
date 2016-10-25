@@ -376,10 +376,17 @@ static next_interesting_function_t get_interesting_function_next_node(tree decl,
 	const struct size_overflow_hash *so_hash;
 	struct fn_raw_data raw_data;
 
+	initialize_raw_data(&raw_data);
 	raw_data.decl = decl;
 	raw_data.decl_str = DECL_NAME_POINTER(decl);
 	raw_data.num = num;
 	raw_data.marked = YES_SO_MARK;
+
+	so_hash = get_size_overflow_hash_entry_tree(&raw_data, SIZE_OVERFLOW);
+	if (so_hash)
+		return get_and_create_next_node_from_global_next_nodes(&raw_data, NULL);
+	if (!so_hash && raw_data.decl_type != SO_NONE)
+		return NULL;
 
 	next_node = get_global_next_interesting_function_entry_with_hash(&raw_data);
 	if (next_node && next_node->marked != NO_SO_MARK) {
@@ -405,9 +412,6 @@ static next_interesting_function_t get_interesting_function_next_node(tree decl,
 		}
 	}
 
-	so_hash = get_size_overflow_hash_entry_tree(raw_data.decl, raw_data.num, SIZE_OVERFLOW);
-	if (so_hash)
-		return get_and_create_next_node_from_global_next_nodes(&raw_data, NULL);
 	return NULL;
 }
 
@@ -591,7 +595,7 @@ static next_interesting_function_t create_so_asm_next_interesting_function_node(
 	next_interesting_function_t next_node;
 	struct fn_raw_data raw_data;
 
-	raw_data.decl = NULL_TREE;
+	initialize_raw_data(&raw_data);
 	raw_data.decl_str = gimple_asm_string(stmt);
 	raw_data.context = "attr";
 	raw_data.hash = 0;
