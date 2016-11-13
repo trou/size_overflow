@@ -134,7 +134,7 @@ next_interesting_function_t create_new_next_interesting_entry(struct fn_raw_data
 	gcc_assert(raw_data->context);
 	gcc_assert(raw_data->hash != NO_HASH);
 	gcc_assert(raw_data->num != NONE_ARGNUM);
-	gcc_assert(raw_data->decl_type != SO_NONE);
+	gcc_assert(raw_data->based_decl != SO_NONE);
 
 	new_node = (next_interesting_function_t)xmalloc(sizeof(*new_node));
 	new_node->decl_name = xstrdup(raw_data->decl_str);
@@ -147,7 +147,7 @@ next_interesting_function_t create_new_next_interesting_entry(struct fn_raw_data
 	new_node->children = NULL;
 	new_node->marked = raw_data->marked;
 	new_node->orig_next_node = orig_next_node;
-	new_node->decl_type = raw_data->decl_type;
+	new_node->based_decl = raw_data->based_decl;
 
 	return new_node;
 }
@@ -257,7 +257,7 @@ static next_interesting_function_t create_orig_next_node_for_a_clone(struct fn_r
 
 	gcc_assert(clone_raw_data->decl != NULL_TREE);
 	gcc_assert(clone_raw_data->num != NONE_ARGNUM);
-	gcc_assert(clone_raw_data->decl_type != SO_NONE);
+	gcc_assert(clone_raw_data->based_decl != SO_NONE);
 
 	initialize_raw_data(&orig_raw_data);
 	orig_raw_data.decl = get_orig_fndecl(clone_raw_data->decl);
@@ -285,7 +285,7 @@ static next_interesting_function_t create_orig_next_node_for_a_clone(struct fn_r
 		return orig_next_node;
 
 	orig_raw_data.marked = clone_raw_data->marked;
-	orig_raw_data.decl_type = clone_raw_data->decl_type;
+	orig_raw_data.based_decl = clone_raw_data->based_decl;
 	orig_next_node = create_new_next_interesting_decl(&orig_raw_data, NULL);
 	if (!orig_next_node)
 		return NULL;
@@ -369,7 +369,7 @@ static void handle_function(struct walk_use_def_data *use_def_data, tree fndecl,
 
 	initialize_raw_data(&raw_data);
 	raw_data.decl = fndecl;
-	raw_data.decl_type = SO_FUNCTION;
+	raw_data.based_decl = SO_FUNCTION;
 	raw_data.decl_str = DECL_NAME_POINTER(fndecl);
 	raw_data.marked = NO_SO_MARK;
 
@@ -472,7 +472,7 @@ static void handle_struct_fields(struct walk_use_def_data *use_def_data, const_t
 	case INDIRECT_REF:
 	case COMPONENT_REF:
 		raw_data.decl = get_ref_field(node);
-		raw_data.decl_type = SO_FIELD;
+		raw_data.based_decl = SO_FIELD;
 		break;
 	// TODO
 	case BIT_FIELD_REF:
@@ -498,7 +498,7 @@ static void handle_vardecl(struct walk_use_def_data *use_def_data, tree node)
 	initialize_raw_data(&raw_data);
 
 	raw_data.decl = node;
-	raw_data.decl_type = SO_VAR;
+	raw_data.based_decl = SO_VAR;
 	create_and_append_new_next_interesting_field_var_decl(use_def_data, &raw_data);
 }
 
@@ -678,7 +678,7 @@ static next_interesting_function_t create_parent_next_cnode(const_gimple stmt, u
 	initialize_raw_data(&raw_data);
 	raw_data.num = num;
 	raw_data.marked = NO_SO_MARK;
-	raw_data.decl_type = SO_FUNCTION;
+	raw_data.based_decl = SO_FUNCTION;
 
 	switch (gimple_code(stmt)) {
 	case GIMPLE_ASM:
@@ -875,7 +875,7 @@ static void size_overflow_node_duplication_hook(struct cgraph_node *src, struct 
 		dst_raw_data.decl = NODE_DECL(dst);
 		dst_raw_data.decl_str = cgraph_node_name(dst);
 		dst_raw_data.marked = cur->marked;
-		dst_raw_data.decl_type = cur->decl_type;
+		dst_raw_data.based_decl = cur->based_decl;
 
 		if (!made_by_compiler(dst_raw_data.decl))
 			break;
@@ -1172,14 +1172,14 @@ static void walk_marked_functions(next_interesting_function_set *visited, next_i
 #else
 	FOR_EACH_VEC_SAFE_ELT(parent->children, i, child) {
 #endif
-		switch (parent->decl_type) {
+		switch (parent->based_decl) {
 		case SO_FIELD:
-			child->decl_type = SO_FIELD;
-			gcc_assert(child->decl_type != SO_FUNCTION_POINTER);
+			child->based_decl = SO_FIELD;
+			gcc_assert(child->based_decl != SO_FUNCTION_POINTER);
 			break;
 		case SO_FUNCTION_POINTER:
-			child->decl_type = SO_FUNCTION_POINTER;
-			gcc_assert(child->decl_type != SO_FIELD);
+			child->based_decl = SO_FUNCTION_POINTER;
+			gcc_assert(child->based_decl != SO_FIELD);
 			break;
 		case SO_FUNCTION:
 		case SO_VAR:
@@ -1192,7 +1192,7 @@ static void walk_marked_functions(next_interesting_function_set *visited, next_i
 	}
 }
 
-static void set_base_decl_type(void)
+static void set_based_decl(void)
 {
 	unsigned int i;
 	next_interesting_function_set *visited;
@@ -1250,7 +1250,7 @@ static unsigned int size_overflow_execute(void)
 		search_so_marked_fns(NO_PRINT_DATA_FLOW);
 	}
 
-	set_base_decl_type();
+	set_based_decl();
 
 	print_so_marked_fns();
 
