@@ -24,8 +24,6 @@ static void walk_use_def_next_functions(struct walk_use_def_data *use_def_data, 
 
 next_interesting_function_t global_next_interesting_function[GLOBAL_NIFN_LEN];
 static bool global_changed;
-#define PRINT_DATA_FLOW true
-#define NO_PRINT_DATA_FLOW false
 
 static struct cgraph_node_hook_list *function_insertion_hook_holder;
 static struct cgraph_2node_hook_list *node_duplication_hook_holder;
@@ -1080,7 +1078,7 @@ static void search_missing_fptr_arg(next_interesting_function_t parent)
 #endif
 }
 
-static void walk_so_marked_fns(next_interesting_function_set *visited, next_interesting_function_t parent, bool debug)
+static void walk_so_marked_fns(next_interesting_function_set *visited, next_interesting_function_t parent)
 {
 	unsigned int i;
 	next_interesting_function_t child;
@@ -1098,13 +1096,8 @@ static void walk_so_marked_fns(next_interesting_function_set *visited, next_inte
 #endif
 		set_yes_so_mark(child);
 
-		if (in_lto_p && debug == PRINT_DATA_FLOW) {
-			fprintf(stderr, " PARENT: decl: %s-%u context: %s %p\n", parent->decl_name, parent->num, parent->context, parent);
-			fprintf(stderr, " \tCHILD: decl: %s-%u context: %s %p\n", child->decl_name, child->num, child->context, child);
-		}
-
 		if (!pointer_set_insert(visited, child))
-			walk_so_marked_fns(visited, child, debug);
+			walk_so_marked_fns(visited, child);
 	}
 }
 
@@ -1132,7 +1125,7 @@ static void print_missing_functions(next_interesting_function_set *visited, next
 }
 
 // Set YES_SO_MARK on functions that will be emitted into the hash table
-static void search_so_marked_fns(bool debug)
+static void search_so_marked_fns(void)
 {
 
 	unsigned int i;
@@ -1142,16 +1135,8 @@ static void search_so_marked_fns(bool debug)
 	visited = next_interesting_function_pointer_set_create();
 	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
 		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
-			if (cur_global->marked == NO_SO_MARK || pointer_set_insert(visited, cur_global))
-				continue;
-
-			if  (in_lto_p && debug == PRINT_DATA_FLOW)
-				fprintf(stderr, "Data flow: decl: %s-%u context: %s %p\n", cur_global->decl_name, cur_global->num, cur_global->context, cur_global);
-
-			walk_so_marked_fns(visited, cur_global, debug);
-
-			if  (in_lto_p && debug == PRINT_DATA_FLOW)
-				fprintf(stderr, "\n");
+			if (cur_global->marked != NO_SO_MARK && !pointer_set_insert(visited, cur_global))
+				walk_so_marked_fns(visited, cur_global);
 		}
 	}
 	pointer_set_destroy(visited);
@@ -1244,6 +1229,61 @@ static void global_vars_and_fptrs(void)
 	}
 }
 
+static void print_parent_child(next_interesting_function_set *visited, next_interesting_function_t parent)
+{
+	unsigned int i;
+	next_interesting_function_t child;
+
+#if BUILDING_GCC_VERSION <= 4007
+	if (VEC_empty(next_interesting_function_t, parent->children))
+		return;
+	FOR_EACH_VEC_ELT(next_interesting_function_t, parent->children, i, child) {
+#else
+	FOR_EACH_VEC_SAFE_ELT(parent->children, i, child) {
+#endif
+		fprintf(stderr, " PARENT: decl: %s-%u context: %s %p\n", parent->decl_name, parent->num, parent->context, parent);
+		fprintf(stderr, " \tCHILD: decl: %s-%u context: %s %p\n", child->decl_name, child->num, child->context, child);
+
+		if (!pointer_set_insert(visited, child))
+			print_parent_child(visited, child);
+	}
+}
+
+static void print_data_flow(void)
+{
+	unsigned int i;
+	next_interesting_function_set *visited;
+	next_interesting_function_t cur_global;
+
+	if (!in_lto_p)
+		return;
+
+	visited = next_interesting_function_pointer_set_create();
+	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
+		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
+			if (cur_global->marked == NO_SO_MARK || pointer_set_insert(visited, cur_global))
+				continue;
+
+			fprintf(stderr, "Data flow: decl: %s-%u context: %s %p\n", cur_global->decl_name, cur_global->num, cur_global->context, cur_global);
+
+			print_parent_child(visited, cur_global);
+
+			fprintf(stderr, "\n");
+		}
+	}
+	pointer_set_destroy(visited);
+}
+
+static void set_so_fns(void)
+{
+	do {
+		global_changed = false;
+		search_so_marked_fns();
+	} while (global_changed);
+
+	print_data_flow();
+}
+
 // Print all missing interesting functions
 static unsigned int size_overflow_execute(void)
 {
@@ -1252,15 +1292,8 @@ static unsigned int size_overflow_execute(void)
 
 	global_vars_and_fptrs();
 
-	// Collect vardecls and
-	search_so_marked_fns(PRINT_DATA_FLOW);
-	while (global_changed) {
-		global_changed = false;
-		search_so_marked_fns(NO_PRINT_DATA_FLOW);
-	}
-
+	set_so_fns();
 	set_based_decl();
-
 	print_so_marked_fns();
 
 	if (in_lto_p) {
