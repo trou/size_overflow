@@ -1227,14 +1227,13 @@ static void print_so_marked_fns(void)
 
 void __attribute__((weak)) check_global_variables(next_interesting_function_t cur_global __unused) {}
 
-// Print all missing interesting functions
-static unsigned int size_overflow_execute(void)
+static void global_vars_and_fptrs(void)
 {
 	unsigned int i;
 	next_interesting_function_t cur_global;
 
-	if (flag_lto && !in_lto_p)
-		return 0;
+	if (!in_lto_p)
+		return;
 
 	// Collect vardecls and funtions reachable by function pointers
 	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
@@ -1243,7 +1242,17 @@ static unsigned int size_overflow_execute(void)
 			search_missing_fptr_arg(cur_global);
 		}
 	}
+}
 
+// Print all missing interesting functions
+static unsigned int size_overflow_execute(void)
+{
+	if (flag_lto && !in_lto_p)
+		return 0;
+
+	global_vars_and_fptrs();
+
+	// Collect vardecls and
 	search_so_marked_fns(PRINT_DATA_FLOW);
 	while (global_changed) {
 		global_changed = false;
