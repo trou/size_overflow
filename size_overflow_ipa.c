@@ -1130,10 +1130,11 @@ static void search_so_marked_fns(void)
 
 	unsigned int i;
 	next_interesting_function_set *visited;
-	next_interesting_function_t cur_global;
 
 	visited = next_interesting_function_pointer_set_create();
 	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
+		next_interesting_function_t cur_global;
+
 		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
 			if (cur_global->marked != NO_SO_MARK && !pointer_set_insert(visited, cur_global))
 				walk_so_marked_fns(visited, cur_global);
@@ -1181,10 +1182,11 @@ static void set_based_decl(void)
 {
 	unsigned int i;
 	next_interesting_function_set *visited;
-	next_interesting_function_t cur;
 
 	visited = next_interesting_function_pointer_set_create();
 	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
+		next_interesting_function_t cur;
+
 		for (cur = global_next_interesting_function[i]; cur; cur = cur->next) {
 			if (cur->marked == ASM_STMT_SO_MARK && !pointer_set_contains(visited, cur))
 				walk_marked_functions(visited, cur);
@@ -1198,10 +1200,11 @@ static void print_so_marked_fns(void)
 {
 	unsigned int i;
 	next_interesting_function_set *visited;
-	next_interesting_function_t cur_global;
 
 	visited = next_interesting_function_pointer_set_create();
 	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
+		next_interesting_function_t cur_global;
+
 		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
 			if (cur_global->marked != NO_SO_MARK && !pointer_set_insert(visited, cur_global))
 				print_missing_functions(visited, cur_global);
@@ -1215,13 +1218,14 @@ void __attribute__((weak)) check_global_variables(next_interesting_function_t cu
 static void global_vars_and_fptrs(void)
 {
 	unsigned int i;
-	next_interesting_function_t cur_global;
 
 	if (!in_lto_p)
 		return;
 
 	// Collect vardecls and funtions reachable by function pointers
 	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
+		next_interesting_function_t cur_global;
+
 		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
 			check_global_variables(cur_global);
 			search_missing_fptr_arg(cur_global);
@@ -1253,13 +1257,14 @@ static void print_data_flow(void)
 {
 	unsigned int i;
 	next_interesting_function_set *visited;
-	next_interesting_function_t cur_global;
 
 	if (!in_lto_p)
 		return;
 
 	visited = next_interesting_function_pointer_set_create();
 	for (i = 0; i < GLOBAL_NIFN_LEN; i++) {
+		next_interesting_function_t cur_global;
+
 		for (cur_global = global_next_interesting_function[i]; cur_global; cur_global = cur_global->next) {
 			if (cur_global->marked == NO_SO_MARK || pointer_set_insert(visited, cur_global))
 				continue;
