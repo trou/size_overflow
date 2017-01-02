@@ -165,6 +165,21 @@ extern void dump_gimple_stmt(pretty_printer *, gimple, int, int);
 /* should come from c-tree.h if only it were installed for gcc 4.5... */
 #define C_TYPE_FIELDS_READONLY(TYPE) TREE_LANG_FLAG_1(TYPE)
 
+static inline tree build_const_char_string(int len, const char *str)
+{
+	tree cstr, elem, index, type;
+
+	cstr = build_string(len, str);
+	elem = build_type_variant(char_type_node, 1, 0);
+	index = build_index_type(size_int(len - 1));
+	type = build_array_type(elem, index);
+	TREE_TYPE(cstr) = type;
+	TREE_CONSTANT(cstr) = 1;
+	TREE_READONLY(cstr) = 1;
+	TREE_STATIC(cstr) = 1;
+	return cstr;
+}
+
 #if BUILDING_GCC_VERSION == 4005
 #define FOR_EACH_LOCAL_DECL(FUN, I, D)			\
 	for (tree vars = (FUN)->local_decls, (I) = 0;	\
