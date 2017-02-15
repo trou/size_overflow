@@ -244,7 +244,7 @@ __visible int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gc
 #endif
 
 	if (!plugin_default_version_check(version, &gcc_version)) {
-		error(G_("incompatible gcc/plugin versions"));
+		error_gcc_version(version);
 		return 1;
 	}
 
@@ -274,7 +274,7 @@ __visible int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gc
 			continue;
 		}
 
-		error(G_("unkown option '-fplugin-arg-%s-%s'"), plugin_name, argv[i].key);
+		error(G_("unknown option '-fplugin-arg-%s-%s'"), plugin_name, argv[i].key);
 	}
 
 	register_callback(plugin_name, PLUGIN_INFO, NULL, &size_overflow_plugin_info);
