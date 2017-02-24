@@ -1169,3 +1169,106 @@ bool short_or_neg_const_ushort(gassign *stmt)
 	// _36 = (signed short) _35;
 	return def_def_stmt && gimple_assign_cast_p(def_def_stmt);
 }
+
+/*
+ * drivers/net/wireless/marvell/mwifiex/util.c mwifiex_alloc_dma_align_buf()
+ * _10 = (unsigned int) _9;
+ * _11 = _10 + 63;
+ * _12 = _11 & 4294967232;
+ *
+ * 4294967232 + 63 = TYPE_MAX
+ */
+
+#define NO_PROPER_CONST 0
+
+static unsigned int search_proper_const(const gassign *stmt)
+{
+	const_tree rhs1, rhs2, is_const;
+	bool rhs1_const, rhs2_const;
+	unsigned int const_num;
+	enum machine_mode type_mode;
+
+	rhs1 = gimple_assign_rhs1(stmt);
+	rhs1_const = is_gimple_constant(rhs1);
+	rhs2 = gimple_assign_rhs2(stmt);
+	rhs2_const = is_gimple_constant(rhs2);
+
+	if (rhs1_const && rhs2_const)
+		return NO_PROPER_CONST;
+	if (!rhs1_const && !rhs2_const)
+		return NO_PROPER_CONST;
+
+	if (rhs1_const) {
+		is_const = rhs1;
+		const_num = 1;
+	} else {
+		is_const = rhs2;
+		const_num = 2;
+	}
+
+	if (!TYPE_UNSIGNED(TREE_TYPE(is_const)))
+		return NO_PROPER_CONST;
+
+	type_mode = TYPE_MODE(TREE_TYPE(is_const));
+	if (type_mode != SImode && type_mode != DImode)
+		return NO_PROPER_CONST;
+
+	return const_num;
+}
+
+gassign *detect_alignment(const gassign *stmt)
+{
+	unsigned int const_num;
+	tree non_const, rhs1, rhs2;
+	const_gimple def_stmt;
+	gimple cast_stmt;
+	const_tree result, plus_const, neg_const;
+
+	// _12 = _11 & 4294967232;
+	if (gimple_assign_rhs_code(stmt) != BIT_AND_EXPR)
+		return NULL;
+
+	const_num = search_proper_const(stmt);
+	if (const_num == NO_PROPER_CONST)
+		return NULL;
+
+	rhs1 = gimple_assign_rhs1(stmt);
+	rhs2 = gimple_assign_rhs2(stmt);
+	if (const_num == 1) {
+		neg_const = rhs1;
+		non_const = rhs2;
+	} else {
+		non_const = rhs1;
+		neg_const = rhs2;
+	}
+
+	// _11 = _10 + 63;
+	def_stmt = get_def_stmt(non_const);
+	if (!def_stmt || gimple_assign_rhs_code(def_stmt) != PLUS_EXPR)
+		return NULL;
+
+	const_num = search_proper_const(as_a_const_gassign(def_stmt));
+	if (const_num == NO_PROPER_CONST)
+		return NULL;
+
+	rhs1 = gimple_assign_rhs1(def_stmt);
+	rhs2 = gimple_assign_rhs2(def_stmt);
+	if (const_num == 1) {
+		plus_const = rhs1;
+		non_const = rhs2;
+	} else {
+		non_const = rhs1;
+		plus_const = rhs2;
+	}
+
+	// _10 = (unsigned int) _9;
+	cast_stmt = get_def_stmt(non_const);
+	if (!gimple_assign_cast_p(cast_stmt))
+		return NULL;
+
+ 	// 4294967232 + 63 = TYPE_MAX
+	result = int_const_binop(PLUS_EXPR, neg_const, plus_const);
+	if (tree_int_cst_equal(result, TYPE_MAX_VALUE(TREE_TYPE(plus_const))))
+		return as_a_gassign(cast_stmt);
+	return NULL;
+}
