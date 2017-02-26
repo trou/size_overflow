@@ -843,17 +843,12 @@ static tree handle_binary_ops(interesting_stmts_t expand_from, tree lhs)
 {
 	enum intentional_overflow_type res;
 	tree rhs1, rhs2, new_lhs;
-	const gassign *skip_cast;
 	gassign *def_stmt = as_a_gassign(get_def_stmt(lhs));
 	tree new_rhs1 = NULL_TREE;
 	tree new_rhs2 = NULL_TREE;
 
 	if (is_ptr_diff(def_stmt))
 		return create_assign(expand_from->visited, def_stmt, lhs, AFTER_STMT);
-
-	skip_cast = detect_alignment(def_stmt);
-	if (skip_cast)
-		pointer_set_insert(expand_from->visited->no_cast_check, skip_cast);
 
 	rhs1 = gimple_assign_rhs1(def_stmt);
 	rhs2 = gimple_assign_rhs2(def_stmt);
