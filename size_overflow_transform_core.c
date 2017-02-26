@@ -710,6 +710,9 @@ static tree handle_unary_rhs(interesting_stmts_t expand_from, gassign *stmt)
 	if (new_rhs1 == NULL_TREE)
 		return create_cast_assign(expand_from->visited, stmt);
 
+	if (detect_ptr_narrowing(stmt))
+		pointer_set_insert(expand_from->visited->no_cast_check, stmt);
+
 	if (pointer_set_contains(expand_from->visited->no_cast_check, stmt))
 		return dup_assign(expand_from->visited, stmt, lhs, new_rhs1, NULL_TREE, NULL_TREE);
 

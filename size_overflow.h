@@ -217,7 +217,7 @@ extern bool neg_short_add_intentional_overflow(gassign *stmt);
 extern bool is_bitfield_unnamed_cast(const_tree decl, gassign *assign);
 extern bool uconst_neg_intentional_overflow(const gassign *stmt);
 extern bool short_or_neg_const_ushort(gassign *stmt);
-
+extern bool detect_ptr_narrowing(gassign *stmt);
 
 // insert_size_overflow_asm.c
 #if BUILDING_GCC_VERSION >= 4009

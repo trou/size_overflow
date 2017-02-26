@@ -1169,3 +1169,34 @@ bool short_or_neg_const_ushort(gassign *stmt)
 	// _36 = (signed short) _35;
 	return def_def_stmt && gimple_assign_cast_p(def_def_stmt);
 }
+
+/*
+ * _9 = (long int) _17;     // 64 <- ptr
+ * _10 = (unsigned int) _9; // 32 <- 64
+ */
+
+bool detect_ptr_narrowing(gassign *stmt)
+{
+	gimple def_stmt;
+	tree lhs, rhs;
+
+	// _10 = (unsigned int) _9
+	if (!gimple_assign_cast_p(stmt))
+		return false;
+
+	lhs = gimple_assign_lhs(stmt);
+	if (TYPE_MODE(TREE_TYPE(lhs)) != SImode)
+		return false;
+
+	rhs = gimple_assign_rhs1(stmt);
+	if (TYPE_MODE(TREE_TYPE(rhs)) != DImode)
+		return false;
+
+	// _9 = (long int) _17;
+	def_stmt = get_def_stmt(rhs);
+	if (!def_stmt || !gimple_assign_cast_p(def_stmt))
+		return false;
+
+	rhs = gimple_assign_rhs1(def_stmt);
+	return TREE_CODE(TREE_TYPE(rhs)) == POINTER_TYPE;
+}
