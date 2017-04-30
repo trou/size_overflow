@@ -27,7 +27,7 @@ $(PROG): insert_size_overflow_asm.c intentional_overflow.c size_overflow_misc.c 
 	$(PLUGINCC) $(PLUGIN_FLAGS) -o $@ $^
 
 run: $(PROG)
-	$(CC) -fplugin=$(CURDIR)/$(PROG) test.c -o test -O2 -fdump-tree-all -fdump-ipa-all
+	$(CC) -fplugin=$(CURDIR)/$(PROG) test.c -o test -O2 -fplugin-arg-size_overflow_plugin-check-fns -fdump-tree-all -fdump-ipa-all
 
 clean:
 	$(RM) -f $(PROG) test test.c.* test.ltrans0.* test.wpa.* test_*.c.* test_*
