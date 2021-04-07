@@ -1,5 +1,5 @@
-CC := gcc
-CXX := g++
+CC := gcc-9
+CXX := g++-9
 GCCPLUGINS_DIR := $(shell $(CC) -print-file-name=plugin)
 PLUGIN_FLAGS := -I$(GCCPLUGINS_DIR)/include -I$(GCCPLUGINS_DIR)/include/c-family #-Wno-unused-parameter -Wno-unused-variable #-fdump-passes
 DESTDIR :=
