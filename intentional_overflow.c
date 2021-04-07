@@ -628,7 +628,6 @@ tree handle_intentional_overflow(interesting_stmts_t expand_from, bool check_ove
 	return create_assign(expand_from->visited, stmt, lhs, AFTER_STMT);
 }
 
-
 static bool compare_bitsize_le(machine_mode arg1, machine_mode arg2)
 {
 #if BUILDING_GCC_VERSION >= 8000
@@ -655,7 +654,6 @@ static bool compare_bitsize_ne(machine_mode arg1, machine_mode arg2)
 	return (GET_MODE_BITSIZE(arg1) != GET_MODE_BITSIZE(arg2));
 #endif
 }
-
 
 static bool is_subtraction_special(struct visited *visited, const gassign *stmt)
 {
@@ -688,7 +686,7 @@ static bool is_subtraction_special(struct visited *visited, const gassign *stmt)
 	rhs2_def_stmt_lhs_mode = TYPE_MODE(TREE_TYPE(rhs2_def_stmt_lhs));
 	if (compare_bitsize_le(rhs1_def_stmt_rhs1_mode, rhs1_def_stmt_lhs_mode))
 		return false;
-	if (compare_bitsize_le(rhs1_def_stmt_rhs1_mode, rhs1_def_stmt_lhs_mode))
+	if (compare_bitsize_le(rhs2_def_stmt_rhs1_mode, rhs2_def_stmt_lhs_mode))
 		return false;
 
 	pointer_set_insert(visited->no_cast_check, rhs1_def_stmt);
