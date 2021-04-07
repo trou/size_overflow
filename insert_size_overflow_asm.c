@@ -325,7 +325,7 @@ static void handle_size_overflow_attr_call(gcall *stmt)
 	fndecl = get_interesting_orig_fndecl_from_stmt(stmt);
 	if (fndecl == NULL_TREE)
 		return;
-	if (DECL_BUILT_IN(fndecl))
+	if (fndecl_built_in_p(fndecl))
 		return;
 
 	search_interesting_so_args(fndecl, (bool *) &orig_argnums);

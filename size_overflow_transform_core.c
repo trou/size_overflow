@@ -37,20 +37,20 @@ tree get_size_overflow_type(struct visited *visited, const_gimple stmt, const_tr
 		return TREE_TYPE(node);
 
 	switch (TYPE_MODE(type)) {
-	case QImode:
-	case HImode:
+	case E_QImode:
+	case E_HImode:
 		new_type = size_overflow_type_SI;
 		break;
-	case SImode:
+	case E_SImode:
 		new_type = size_overflow_type_DI;
 		break;
-	case DImode:
+	case E_DImode:
 		if (LONG_TYPE_SIZE == GET_MODE_BITSIZE(SImode))
 			new_type = TYPE_UNSIGNED(type) ? unsigned_intDI_type_node : intDI_type_node;
 		else
 			new_type = size_overflow_type_TI;
 		break;
-	case TImode:
+	case E_TImode:
 		gcc_assert(!TYPE_UNSIGNED(type));
 		new_type = size_overflow_type_TI;
 		break;
@@ -487,7 +487,7 @@ static void insert_cond_result(interesting_stmts_t expand_from, basic_block bb_t
 	gcc_assert(report_node);
 	frequency = compute_call_stmt_bb_frequency(current_function_decl, bb_true);
 
-	edge = cgraph_create_edge(get_cnode(current_function_decl), report_node, func_stmt, bb_true->count, frequency, bb_true->loop_depth);
+	edge = cgraph_create_edge(get_cnode(current_function_decl), report_node, func_stmt, bb_true->count, frequency);
 	gcc_assert(edge != NULL);
 }
 

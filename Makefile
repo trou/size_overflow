@@ -1,7 +1,7 @@
-CC := gcc
-CXX := g++
+CC := gcc-9
+CXX := g++-9
 GCCPLUGINS_DIR := $(shell $(CC) -print-file-name=plugin)
-PLUGIN_FLAGS := -I$(GCCPLUGINS_DIR)/include -I$(GCCPLUGINS_DIR)/include/c-family #-Wno-unused-parameter -Wno-unused-variable #-fdump-passes
+PLUGIN_FLAGS := -Wfatal-errors -I$(GCCPLUGINS_DIR)/include -I$(GCCPLUGINS_DIR)/include/c-family #-Wno-unused-parameter -Wno-unused-variable #-fdump-passes
 DESTDIR :=
 LDFLAGS :=
 PROG := size_overflow_plugin.so
@@ -14,7 +14,7 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 PLUGINCC := $(shell $(CONFIG_SHELL) gcc-plugin.sh "$(CC)" "$(CXX)" "$(CC)")
 
 ifeq ($(PLUGINCC),$(CC))
-PLUGIN_FLAGS += -std=gnu99 -O0
+PLUGIN_FLAGS += -std=gnu99 -O0 
 else
 PLUGIN_FLAGS += -std=gnu++98 -fno-rtti -Wno-narrowing -Og
 endif

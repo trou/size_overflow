@@ -260,7 +260,7 @@ static next_interesting_function_t create_orig_next_node_for_a_clone(struct fn_r
 	initialize_raw_data(&orig_raw_data);
 	orig_raw_data.decl = get_orig_fndecl(clone_raw_data->decl);
 
-	if (DECL_BUILT_IN(orig_raw_data.decl) || DECL_BUILT_IN_CLASS(orig_raw_data.decl) == BUILT_IN_NORMAL)
+	if (fndecl_built_in_p(orig_raw_data.decl) || DECL_BUILT_IN_CLASS(orig_raw_data.decl) == BUILT_IN_NORMAL)
 		return NULL;
 
 	if (made_by_compiler(orig_raw_data.decl))
@@ -359,7 +359,7 @@ static void handle_function(struct walk_use_def_data *use_def_data, tree fndecl,
 	gcc_assert(fndecl != NULL_TREE);
 
 	// ignore builtins to not explode coverage (e.g., memcpy)
-	if (DECL_BUILT_IN(fndecl) || DECL_BUILT_IN_CLASS(fndecl) == BUILT_IN_NORMAL)
+	if (fndecl_built_in_p(fndecl) || DECL_BUILT_IN_CLASS(fndecl) == BUILT_IN_NORMAL)
 		return;
 
 	if (get_intentional_attr_type(fndecl) == MARK_TURN_OFF)
@@ -796,7 +796,7 @@ static void handle_cgraph_node(struct cgraph_node *node)
 				const gcall *call = as_a_const_gcall(stmt);
 				tree fndecl = gimple_call_fndecl(call);
 
-				if (fndecl != NULL_TREE && (DECL_BUILT_IN(fndecl) || DECL_BUILT_IN_CLASS(fndecl) == BUILT_IN_NORMAL))
+				if (fndecl != NULL_TREE && (fndecl_built_in_p(fndecl) || DECL_BUILT_IN_CLASS(fndecl) == BUILT_IN_NORMAL))
 					break;
 
 				len = gimple_call_num_args(call);

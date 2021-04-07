@@ -203,7 +203,7 @@ unsigned int get_decl_hash(const_tree decl, const char *decl_name)
 	gcc_assert(code == FIELD_DECL || code == FUNCTION_DECL || code == VAR_DECL);
 
 	// skip builtins __builtin_constant_p
-	if (code == FUNCTION_DECL && (DECL_BUILT_IN(decl) || DECL_BUILT_IN_CLASS(decl) == BUILT_IN_NORMAL))
+	if (code == FUNCTION_DECL && (fndecl_built_in_p(decl) || DECL_BUILT_IN_CLASS(decl) == BUILT_IN_NORMAL))
 		return NO_HASH;
 
 	decl_hash_data.fn_name = decl_name;

@@ -133,10 +133,11 @@ static struct attribute_spec size_overflow_attr = {
 	.decl_required			= true,
 	.type_required			= false,
 	.function_type_required		= false,
-	.handler			= handle_size_overflow_attribute,
 #if BUILDING_GCC_VERSION >= 4007
-	.affects_type_identity		= false
+	.affects_type_identity		= false,
 #endif
+	.handler			= handle_size_overflow_attribute,
+    .exclude = NULL
 };
 
 static struct attribute_spec intentional_overflow_attr = {
@@ -146,10 +147,11 @@ static struct attribute_spec intentional_overflow_attr = {
 	.decl_required			= true,
 	.type_required			= false,
 	.function_type_required		= false,
-	.handler			= handle_intentional_overflow_attribute,
 #if BUILDING_GCC_VERSION >= 4007
-	.affects_type_identity		= false
+	.affects_type_identity		= false,
 #endif
+	.handler			= handle_intentional_overflow_attribute,
+    .exclude = NULL
 };
 
 static void register_attributes(void __unused *event_data, void __unused *data)
