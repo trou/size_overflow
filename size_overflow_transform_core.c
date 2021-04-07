@@ -113,7 +113,8 @@ tree create_assign(struct visited *visited, gimple oldstmt, tree rhs1, bool befo
 		const_edge e;
 
 		gcc_assert(before == false);
-		gcc_assert(stmt_can_throw_internal(oldstmt));
+        /* XXX NULL was added to please GCC 9, will probably crash ?*/
+		gcc_assert(stmt_can_throw_internal(NULL, oldstmt));
 		gcc_assert(gimple_code(oldstmt) == GIMPLE_CALL);
 		gcc_assert(!gsi_end_p(gsi));
 
